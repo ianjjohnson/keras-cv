@@ -17,12 +17,12 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from absl import flags
 from keras.utils import to_categorical
+from matplotlib import pyplot as plt
 from tensorflow.keras import callbacks
 from tensorflow.keras import layers
 from tensorflow.keras import losses
 from tensorflow.keras import metrics
 from tensorflow.keras import optimizers
-from matplotlib import pyplot as plt
 
 import keras_cv
 from keras_cv import models
@@ -103,7 +103,9 @@ with strategy.scope():
         output_activation="softmax",
     )
 
-optimizer = optimizers.Adam(learning_rate=FLAGS.initial_learning_rate, global_clipnorm=10)
+optimizer = optimizers.Adam(
+    learning_rate=FLAGS.initial_learning_rate, global_clipnorm=10
+)
 loss_fn = losses.CategoricalCrossentropy()
 
 with strategy.scope():
@@ -134,6 +136,7 @@ model.fit(
     validation_data=test_ds,
 )
 
+
 def visualize_predictions(dataset, title):
     plt.figure(figsize=(10, 10)).suptitle(title, fontsize=18)
     for i, samples in enumerate(iter(dataset.take(9))):
@@ -145,8 +148,13 @@ def visualize_predictions(dataset, title):
         plt.imshow(tf.math.argmax(masks[0], axis=-1).numpy().astype("uint8"))
         plt.axis("off")
         plt.subplot(9, 3, 3 * i + 3)
-        plt.imshow(tf.math.argmax(model(tf.expand_dims(images[0], axis=0)), axis=-1).numpy()[0].astype("uint8"))
+        plt.imshow(
+            tf.math.argmax(model(tf.expand_dims(images[0], axis=0)), axis=-1)
+            .numpy()[0]
+            .astype("uint8")
+        )
         plt.axis("off")
     plt.show()
+
 
 visualize_predictions(train_ds, "Example predictions")
