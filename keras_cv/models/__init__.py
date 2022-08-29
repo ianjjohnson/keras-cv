@@ -35,4 +35,5 @@ from keras_cv.models.resnet_v1 import ResNet152
 from keras_cv.models.resnet_v2 import ResNet50V2
 from keras_cv.models.resnet_v2 import ResNet101V2
 from keras_cv.models.resnet_v2 import ResNet152V2
+from keras_cv.models.unet import UNet
 from keras_cv.models.vgg19 import VGG19

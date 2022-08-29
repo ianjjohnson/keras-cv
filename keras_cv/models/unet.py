@@ -90,9 +90,9 @@ def UNet(
     block_widths=None,
     down_block_widths=None,
     up_block_widths=None,
-    bottom_block_width=None,
     block_depth=2,
-    bottom_block_depth=None,
+    bottleneck_width=None,
+    bottleneck_depth=None,
     block_scale_factor=2,
     input_shape=(224, 224, 3),
     output_channels=3,
@@ -113,23 +113,23 @@ def UNet(
             "Either `block_widths` or one of `down_block_widths` and `up_block_widths` must be specified."
         )
 
-    if block_widths is None and bottom_block_width is None:
+    if block_widths is None and bottleneck_width is None:
         raise ValueError(
-            "`bottom_block_width` must be specified when using `down_block_widths` and/or `up_block_widths`"
+            "`bottleneck_width` must be specified when using `down_block_widths` and/or `up_block_widths`"
         )
 
-    if down_block_widths and up_block_widths and bottom_block_width is None:
+    if down_block_widths and up_block_widths and bottleneck_width is None:
         raise ValueError(
-            "`bottom_block_width` must be specified when `up_block_widths` and `down_block_widths` are specified."
+            "`bottleneck_width` must be specified when `up_block_widths` and `down_block_widths` are specified."
         )
 
     if block_widths:
         down_block_widths = block_widths[:-1]
-        bottom_block_width = block_widths[-1]
+        bottleneck_width = block_widths[-1]
         up_block_widths = reversed(block_widths[:-1])
 
-    if bottom_block_depth is None:
-        bottom_block_depth = block_depth
+    if bottleneck_depth is None:
+        bottleneck_depth = block_depth
 
     inputs = layers.Input(input_shape)
     x = inputs
@@ -153,8 +153,8 @@ def UNet(
         for width in down_block_widths:
             x = DownBlock(width, block_depth, block_scale_factor)([x, skip_connections])
 
-    for _ in range(bottom_block_depth):
-        x = ResidualBlock(bottom_block_width)(x)
+    for _ in range(bottleneck_depth):
+        x = ResidualBlock(bottleneck_width)(x)
 
     if up_block_widths:
         for width in up_block_widths:
