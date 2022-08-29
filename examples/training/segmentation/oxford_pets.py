@@ -16,13 +16,12 @@ import sys
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from absl import flags
+from keras.utils import to_categorical
 from tensorflow.keras import callbacks
+from tensorflow.keras import layers
 from tensorflow.keras import losses
 from tensorflow.keras import metrics
 from tensorflow.keras import optimizers
-from tensorflow.keras import layers
-from keras.utils import to_categorical
-
 
 import keras_cv
 from keras_cv import models
@@ -57,7 +56,8 @@ EPOCHS = 250
 
 tmp = None
 
-#@tf.function
+
+@tf.function
 def preprocess(record):
     resizing = layers.Resizing(
         width=IMAGE_SIZE[0], height=IMAGE_SIZE[1], crop_to_aspect_ratio=False
@@ -75,16 +75,24 @@ def preprocess(record):
 
     return image, mask
 
-dataset = tfds.load('oxford_iiit_pet:3.*.*')
 
-train_ds = dataset["train"].map(preprocess, num_parallel_calls=tf.data.AUTOTUNE).batch(FLAGS.batch_size).prefetch(tf.data.AUTOTUNE)
-test_ds = dataset["test"].map(preprocess, num_parallel_calls=tf.data.AUTOTUNE).batch(FLAGS.batch_size).prefetch(tf.data.AUTOTUNE)
+dataset = tfds.load("oxford_iiit_pet:3.*.*")
 
+train_ds = (
+    dataset["train"]
+    .map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
+    .batch(FLAGS.batch_size)
+    .prefetch(tf.data.AUTOTUNE)
+)
+test_ds = (
+    dataset["test"]
+    .map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
+    .batch(FLAGS.batch_size)
+    .prefetch(tf.data.AUTOTUNE)
+)
 
 # TODO(ianstenbit): Add data augmentation once supported by KerasCV layers
 
-# For TPU training, use tf.distribute.TPUStrategy()
-# MirroredStrategy is best for a single machine with multiple GPUs
 strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
@@ -96,37 +104,11 @@ with strategy.scope():
         output_activation="softmax",
     )
 
-
-"""
-Next, we pick an optimizer. Here we use Adam with a constant learning rate.
-Note that learning rate will decrease over time due to the ReduceLROnPlateau callback.
-"""
-
-
 optimizer = optimizers.SGD(learning_rate=FLAGS.initial_learning_rate, momentum=0.9)
-
-
-"""
-Next, we pick a loss function. We use CategoricalCrossentropy with label smoothing.
-"""
-
-
 loss_fn = losses.CategoricalCrossentropy(label_smoothing=0.1)
-
-
-"""
-Next, we specify the metrics that we want to track. For this example, we track accuracy.
-"""
 
 with strategy.scope():
     training_metrics = [metrics.CategoricalAccuracy()]
-
-
-"""
-As a last piece of configuration, we configure callbacks for the method.
-We use EarlyStopping, BackupAndRestore, and a model checkpointing callback.
-"""
-
 
 callbacks = [
     callbacks.ReduceLROnPlateau(
@@ -137,11 +119,6 @@ callbacks = [
     callbacks.ModelCheckpoint(FLAGS.weights_path, save_weights_only=True),
     callbacks.TensorBoard(log_dir=FLAGS.tensorboard_path),
 ]
-
-
-"""
-We can now compile the model and fit it to the training dataset.
-"""
 
 model.compile(
     optimizer=optimizer,
