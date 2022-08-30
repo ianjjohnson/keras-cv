@@ -39,8 +39,8 @@ class UNetTest(tf.test.TestCase, parameterized.TestCase):
     def test_superresolution_unet(self):
         superresolution_model = unet.UNet(
             include_rescaling=True,
-            bottom_block_depth=8,
-            bottom_block_width=64,
+            bottleneck_depth=8,
+            bottleneck_width=64,
             up_block_widths=[64, 64],
             input_shape=(16, 16, 3),
         )

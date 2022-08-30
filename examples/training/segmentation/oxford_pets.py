@@ -16,7 +16,6 @@ import sys
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from absl import flags
-from keras.utils import to_categorical
 from matplotlib import pyplot as plt
 from tensorflow.keras import callbacks
 from tensorflow.keras import layers
@@ -24,9 +23,7 @@ from tensorflow.keras import losses
 from tensorflow.keras import metrics
 from tensorflow.keras import optimizers
 
-import keras_cv
 from keras_cv import models
-from keras_cv.datasets import imagenet
 
 flags.DEFINE_string(
     "backup_path", None, "Directory which will be used for training backups."
