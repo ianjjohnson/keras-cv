@@ -68,6 +68,55 @@ class UNetTest(tf.test.TestCase, parameterized.TestCase):
 
         segmentation_model.fit(images, targets)
 
+    def test_block_widths_precludes_other_block_configuration(self):
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                block_widths=[32, 64],
+                up_block_widths=[64, 64],
+            )
+
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                block_widths=[32, 64],
+                down_block_widths=[64, 64],
+            )
+
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                block_widths=[32, 64],
+                bottleneck_width=64,
+            )
+
+    def test_skip_connections_supported_iff_using_block_widths(self):
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                bottleneck_depth=8,
+                bottleneck_width=64,
+                up_block_widths=[64, 64],
+                include_skip_connections=True,
+            )
+
+        _ = unet.UNet(
+            include_rescaling=True, block_widths=[32, 64], include_skip_connections=True
+        )
+
+    def test_bottleneck_width_required_for_custom_up_and_down_blocks(self):
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                up_block_widths=[64, 64],
+            )
+
+        _ = unet.UNet(
+            include_rescaling=True,
+            bottleneck_width=64,
+            up_block_widths=[64, 64],
+        )
+
 
 if __name__ == "__main__":
     tf.test.main()

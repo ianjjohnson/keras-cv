@@ -113,14 +113,14 @@ def UNet(
             "Either `block_widths` or one of `down_block_widths` and `up_block_widths` must be specified."
         )
 
-    if block_widths is None and bottleneck_width is None:
+    if block_widths and (down_block_widths or up_block_widths):
         raise ValueError(
-            "`bottleneck_width` must be specified when using `down_block_widths` and/or `up_block_widths`"
+            "When `block_widths` is specified, neither of `down_block_widths` and `up_block_widths` should be specified"
         )
 
-    if down_block_widths and up_block_widths and bottleneck_width is None:
+    if not ((block_widths is None) ^ (bottleneck_width is None)):
         raise ValueError(
-            "`bottleneck_width` must be specified when `up_block_widths` and `down_block_widths` are specified."
+            "`bottleneck_width` must be specified when using `down_block_widths` and/or `up_block_widths`, but not when using `block_widths`"
         )
 
     if block_widths:
