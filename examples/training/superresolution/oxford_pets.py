@@ -149,7 +149,9 @@ def visualize_predictions(dataset, title):
         plt.imshow(full_res[0].numpy().astype("uint8"))
         plt.axis("off")
         plt.subplot(9, 3, 3 * i + 3)
-        plt.imshow(model(tf.expand_dims(downscaled[0], axis=0)).numpy()[0].astype("uint8"))
+        plt.imshow(
+            model(tf.expand_dims(downscaled[0], axis=0)).numpy()[0].astype("uint8")
+        )
         plt.axis("off")
     plt.show()
 

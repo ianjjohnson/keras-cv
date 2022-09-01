@@ -63,9 +63,9 @@ def ResidualBlock(width):
 def DownBlock(width, block_depth, block_scale_factor):
     def apply(x):
         x, skips = x
-        for _ in range(block_depth):
+        for index in range(block_depth):
             x = ResidualBlock(width)(x)
-            skips.append(x)
+        skips.append(x)
         x = layers.AveragePooling2D(pool_size=block_scale_factor)(x)
         return x
 
@@ -76,9 +76,9 @@ def UpBlock(width, block_depth, block_scale_factor, include_skip_connections):
     def apply(x):
         x, skips = x
         x = layers.UpSampling2D(size=block_scale_factor, interpolation="bilinear")(x)
-        for _ in range(block_depth):
-            if include_skip_connections:
-                x = layers.Concatenate()([x, skips.pop()])
+        if include_skip_connections:
+            x = layers.Concatenate()([x, skips.pop()])
+        for index in range(block_depth):
             x = ResidualBlock(width)(x)
         return x
 

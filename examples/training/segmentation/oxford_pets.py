@@ -97,6 +97,7 @@ with strategy.scope():
         block_widths=[32, 64, 96],
         output_channels=CLASSES,
         input_shape=IMAGE_SIZE + (3,),
+        include_skip_connections=True,
         output_activation="softmax",
     )
 
