@@ -25,16 +25,14 @@ class UNetTest(tf.test.TestCase, parameterized.TestCase):
             include_rescaling=True,
             block_widths=[32, 64, 96],
             include_skip_connections=True,
-            include_input_noise=True,
             input_shape=(64, 64, 3),
         )
         diffusion_model.compile(loss=losses.MeanAbsoluteError())
 
         images = tf.random.uniform((5, 64, 64, 3))
-        noise = tf.random.uniform((5, 1, 1, 1))
         targets = tf.random.uniform((5, 64, 64, 3))
 
-        diffusion_model.fit([images, noise], targets)
+        diffusion_model.fit(images, targets)
 
     def test_superresolution_unet(self):
         superresolution_model = unet.UNet(

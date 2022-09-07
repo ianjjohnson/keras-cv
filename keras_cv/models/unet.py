@@ -18,28 +18,8 @@ Reference:
   - [U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/pdf/1505.04597.pdf)
 """
 
-import math
-
-import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
-
-def sinusoidal_embedding(
-    x, embedding_min_frequency=1.0, embedding_max_frequency=1000.0, embedding_dims=32
-):
-    frequencies = tf.exp(
-        tf.linspace(
-            tf.math.log(embedding_min_frequency),
-            tf.math.log(embedding_max_frequency),
-            embedding_dims // 2,
-        )
-    )
-    angular_speeds = 2.0 * math.pi * frequencies
-    embeddings = tf.concat(
-        [tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3
-    )
-    return embeddings
 
 
 def ResidualBlock(width):
@@ -97,7 +77,6 @@ def UNet(
     input_shape=(224, 224, 3),
     output_channels=3,
     include_skip_connections=False,
-    include_input_noise=False,
     weights=None,
     name="Unet",
     output_activation=None,
@@ -137,17 +116,6 @@ def UNet(
     if include_rescaling:
         x = layers.Rescaling(1 / 255.0)(x)
 
-    if include_input_noise:
-        noise_variances = keras.Input(shape=(1, 1, 1))
-
-        noise_embedding = layers.Lambda(sinusoidal_embedding)(noise_variances)
-        noise_embedding = layers.UpSampling2D(
-            size=input_shape[:2], interpolation="nearest"
-        )(noise_embedding)
-
-        x = layers.Conv2D(down_block_widths[0], kernel_size=1)(x)
-        x = layers.Concatenate()([x, noise_embedding])
-
     skip_connections = []
     if down_block_widths:
         for width in down_block_widths:
@@ -169,10 +137,7 @@ def UNet(
         activation=output_activation,
     )(x)
 
-    if include_input_noise:
-        model = keras.Model([inputs, noise_variances], x, name=name)
-    else:
-        model = keras.Model(inputs, x, name=name)
+    model = keras.Model(inputs, x, name=name)
 
     if weights is not None:
         model.load_weights(weights)
