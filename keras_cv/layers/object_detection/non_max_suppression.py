@@ -95,7 +95,7 @@ class NonMaxSuppression(tf.keras.layers.Layer):
         self.max_detections_per_class = max_detections_per_class
         self.built = True
 
-    def call(self, predictions, images=None):
+    def call(self, predictions, images=None, image_shape=None):
         if predictions.shape[-1] != 6:
             raise ValueError(
                 "keras_cv.layers.NonMaxSuppression() expects `call()` "
@@ -109,6 +109,7 @@ class NonMaxSuppression(tf.keras.layers.Layer):
             source=self.bounding_box_format,
             target="yxyx",
             images=images,
+            image_shape=image_shape,
         )
 
         # preparing the predictions for TF NMS op
@@ -139,6 +140,7 @@ class NonMaxSuppression(tf.keras.layers.Layer):
             source="yxyx",
             target=self.bounding_box_format,
             images=images,
+            image_shape=image_shape,
         )
 
     def _decode_nms_boxes_to_tensor(self, nmsed_boxes):

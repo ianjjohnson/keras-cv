@@ -89,30 +89,28 @@ class NmsPredictionDecoder(tf.keras.layers.Layer):
         )
         return boxes
 
-    def call(self, images, predictions):
-        """Accepts images and raw predictions, and returns bounding box predictions.
+    def call(self, predictions, image_shape=None):
+        """Accepts raw predictions and an image shape, and returns bounding box predictions.
 
         Args:
-            images: Tensor of shape [batch, height, width, channels].
             predictions: Dense Tensor of shape [batch, anchor_boxes, 6] in the
                 `bounding_box_format` specified in the constructor.
+            images_shape: The shape of the images on which predictions were made in the format (height, width, channels).
         """
-        if isinstance(images, tf.RaggedTensor):
-            raise ValueError(
-                "DecodePredictions() does not support tf.RaggedTensor inputs. "
-                f"Received images={images}."
-            )
 
-        anchor_boxes = self.anchor_generator(images[0])
+        anchor_boxes = self.anchor_generator(image_shape=image_shape)
         anchor_boxes = tf.concat(list(anchor_boxes.values()), axis=0)
         anchor_boxes = bounding_box.convert_format(
             anchor_boxes,
             source=self.anchor_generator.bounding_box_format,
             target="xywh",
-            images=images[0],
+            image_shape=image_shape,
         )
         predictions = bounding_box.convert_format(
-            predictions, source=self.bounding_box_format, target="xywh", images=images
+            predictions,
+            source=self.bounding_box_format,
+            target="xywh",
+            image_shape=image_shape,
         )
         box_predictions = predictions[:, :, :4]
         cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
@@ -130,6 +128,6 @@ class NmsPredictionDecoder(tf.keras.layers.Layer):
             boxes,
             source="xywh",
             target=self.suppression_layer.bounding_box_format,
-            images=images,
+            image_shape=image_shape,
         )
-        return self.suppression_layer(boxes, images=images)
+        return self.suppression_layer(boxes, image_shape=image_shape)

@@ -23,7 +23,6 @@ class NmsPredictionDecoderTest(tf.test.TestCase):
         images_shape = (8, 512, 1024, 3)
         predictions_shape = (8, 98208, 4 + classes)
 
-        images = tf.random.uniform(shape=images_shape)
         predictions = tf.random.uniform(
             shape=predictions_shape, minval=0.0, maxval=1.0, dtype=tf.float32
         )
@@ -45,6 +44,6 @@ class NmsPredictionDecoderTest(tf.test.TestCase):
             bounding_box_format="rel_xyxy",
         )
 
-        result = layer(images=images, predictions=predictions)
+        result = layer(image_shape=images_shape[1:], predictions=predictions)
 
         self.assertEqual(result.shape, [8, None, 6])
