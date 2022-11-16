@@ -262,7 +262,8 @@ class RetinaNet(ObjectDetectionBaseModel):
         return tf.concat([box_outputs, cls_outputs], axis=-1)
 
     def decode_predictions(self, predictions, images=None, image_shape=None):
-        image_shape = image_shape or tf.shape(images)[1:]
+        if image_shape is None:
+            image_shape = tf.shape(images)[1:]
         # no-op if default decoder is used.
         pred_for_inference = bounding_box.convert_format(
             predictions,
@@ -460,9 +461,12 @@ class RetinaNet(ObjectDetectionBaseModel):
         self._update_metrics(y_for_metrics, predictions)
         return {m.name: m.result() for m in self.metrics}
 
-    def predict_step(self, x):
-        predictions = super().predict_step(x)
-        return self.decode_predictions(predictions, x)
+    def predict(self, x):
+        predictions = super().predict(x)
+
+        if isinstance(x, tf.data.Dataset):
+            x = tf.constant(next(iter(x)))
+        return self.decode_predictions(predictions, image_shape=tf.shape(x)[1:])
 
     def _update_metrics(self, y_true, y_pred):
         y_true = bounding_box.convert_format(
