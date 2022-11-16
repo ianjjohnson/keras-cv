@@ -27,7 +27,6 @@ class RetinaNetTest(tf.test.TestCase):
     @pytest.fixture(autouse=True)
     def cleanup_global_session(self):
         # Code before yield runs before the test
-        tf.config.set_visible_devices([], "GPU")
         yield
         tf.keras.backend.clear_session()
 
