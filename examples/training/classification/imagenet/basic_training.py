@@ -102,6 +102,11 @@ flags.DEFINE_float(
     0.45,
     "For how many steps expressed in percentage (0..1 float) of total steps should the schedule hold the initial learning rate after warmup is finished, and before applying cosine decay.",
 )
+flags.DEFINE_float(
+    "weight_decay",
+    None,
+    "The weight decay parameter for the optimizer",
+)
 
 # An upper bound for number of epochs (this script uses EarlyStopping).
 flags.DEFINE_integer("epochs", 1000, "Epochs to train for")
@@ -317,12 +322,18 @@ Next, we pick an optimizer. Here we use SGD.
 Note that learning rate will decrease over time due to the ReduceLROnPlateau callback or with the LRWarmup scheduler.
 """
 
-if FLAGS.learning_rate_schedule == COSINE_DECAY_WITH_WARMUP:
-    optimizer = optimizers.SGD(learning_rate=schedule, momentum=0.9)
-else:
-    optimizer = optimizers.SGD(
-        learning_rate=INITIAL_LEARNING_RATE, momentum=0.9, global_clipnorm=10
-    )
+with strategy.scope():
+    if FLAGS.learning_rate_schedule == COSINE_DECAY_WITH_WARMUP:
+        optimizer = optimizers.SGD(
+            learning_rate=schedule, momentum=0.9, weight_decay=FLAGS.weight_decay
+        )
+    else:
+        optimizer = optimizers.SGD(
+            learning_rate=INITIAL_LEARNING_RATE,
+            momentum=0.9,
+            global_clipnorm=10,
+            weight_decay=FLAGS.weight_decay,
+        )
 """
 Next, we pick a loss function. We use CategoricalCrossentropy with label smoothing.
 """
