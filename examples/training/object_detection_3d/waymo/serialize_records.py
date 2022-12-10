@@ -50,7 +50,7 @@ filenames = tf.data.TFRecordDataset.list_files(
 )
 
 for filename in filenames:
-    train_ds = load(filename)
+    train_ds = load([filename])
     train_ds = train_ds.map(
         build_tensors_for_augmentation, num_parallel_calls=tf.data.AUTOTUNE
     )
