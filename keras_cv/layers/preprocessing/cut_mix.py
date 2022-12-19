@@ -61,6 +61,7 @@ class CutMix(BaseImageAugmentationLayer):
         self._validate_inputs(inputs)
         images = inputs.get("images", None)
         labels = inputs.get("labels", None)
+
         if images is None or labels is None:
             raise ValueError(
                 "CutMix expects inputs in a dictionary with format "
@@ -109,7 +110,7 @@ class CutMix(BaseImageAugmentationLayer):
 
         bounding_box_area = cut_height * cut_width
         lambda_sample = 1.0 - bounding_box_area / (image_height * image_width)
-        lambda_sample = tf.cast(lambda_sample, dtype=tf.float32)
+        lambda_sample = tf.cast(lambda_sample, dtype=self.compute_dtype)
 
         images = fill_utils.fill_rectangle(
             images,

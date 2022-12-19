@@ -17,14 +17,27 @@ This test is powered by [ml-testing-accelerators](https://github.com/GoogleCloud
 
 
 ### Adding Test Dependencies
+You must be authorized to run builds in the `keras-team-test` GCP project.
+If you are not, please open a GitHub issue and ping a team member.
+To authorize yourself with `keras-team-test`, run:
+
+```bash
+gcloud config set project keras-team-test
+```
 
 To add a dependency for GPU tests:
 - Create a PR adding the dependency to `requirements.txt`
 - Have a Keras team member update the Docker image for GPU tests by running the remaining steps
 - Create a `Dockerfile` with the following contents:
 ```
-FROM tensorflow/tensorflow:2.9.1-gpu
+FROM tensorflow/tensorflow:2.10.0-gpu
+RUN \
+    apt-get -y update && \
+    apt-get -y install openjdk-8-jdk && \
+    echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
+    curl https://bazel.build/bazel-release.pub.gpg | apt-key add
 RUN apt-get -y update
+RUN apt-get -y install bazel
 RUN apt-get -y install git
 RUN git clone https://github.com/{path_to_keras_cv_fork}.git
 RUN cd keras-cv && git checkout {branch_name}

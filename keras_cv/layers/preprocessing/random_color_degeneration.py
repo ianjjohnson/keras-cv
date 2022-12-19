@@ -55,7 +55,7 @@ class RandomColorDegeneration(BaseImageAugmentationLayer):
         self.seed = seed
 
     def get_random_transformation(self, **kwargs):
-        return self.factor()
+        return self.factor(dtype=self.compute_dtype)
 
     def augment_image(self, image, transformation=None, **kwargs):
         degenerate = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
@@ -67,6 +67,9 @@ class RandomColorDegeneration(BaseImageAugmentationLayer):
 
     def augment_label(self, label, transformation=None, **kwargs):
         return label
+
+    def augment_segmentation_mask(self, segmentation_mask, transformation, **kwargs):
+        return segmentation_mask
 
     def get_config(self):
         config = super().get_config()

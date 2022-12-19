@@ -56,6 +56,11 @@ approved by the reviewer.
 
 Once the pull request is approved, a team member will take care of merging.
 
+## Contributing models
+When contributing new models, please validate model performance by providing training results. You can do this using our existing [ImageNet training script](https://github.com/keras-team/keras-cv/blob/master/examples/training/classification/imagenet/basic_training.py) or by contributing a custom training script of your own (see "Contributing training scripts" below). Training results can be added to the training history log with [this script](https://github.com/keras-team/keras-cv/blob/master/shell/weights/update_training_history.py), or shared with the team via Google Drive (we'll need TensorBoard logs as well as weights). Either way, the KerasCV team will need to upload the weights to our GCS bucket for distribution.
+
+For an initial submission, trained weights do not need to exactly match paper-claimed results. As a baseline, let's shoot for 90% of the paper-claimed ImageNet top-1 accuracy. However, we should strive to improve these weights quickly to at least match paper-claimed results.
+
 ## Contributing training scripts
 
 KerasCV is working to include a catalog of high-performing model training scripts for the models included in KerasCV.models and is welcoming contributions for these scripts. These training scripts serve as documentation of good training techniques and will be used to train weights that will be offered in KerasCV models through the package.
@@ -79,6 +84,14 @@ Our default training scripts train using ImageNet. Because we cannot distribute 
 
 We look forward to delivering great pre-trained models in KerasCV with the help of your contributions!
 
+## Contributing custom ops
+
+We do not plan to accept contributed custom ops due to the maintenance burden that they introduce. If there is a clear need for a specific custom op that should live in KerasCV, please consult the KerasCV team before implementing it, as we expect to reject contributions of custom ops by default.
+
+We currently support only a small handful of ops that run on CPU and are not used at inference time.
+
+If you are updating existing custom ops, you can re-compile the binaries from source using the instructions in the `Tests that require custom ops` section below.
+
 ## Setup environment
 
 Setting up your KerasCV development environment requires you to fork the KerasCV repository,
@@ -97,6 +110,15 @@ The first line relies on having an installation of [the GitHub CLI](https://gith
 
 Following these commands you should be able to run the tests using `pytest keras_cv`.
 Please report any issues running tests following these steps.
+
+Note that this will _not_ install custom ops. If you'd like to install custom ops from source, you can compile the binaries and add them to your local environment manually (requires Bazel):
+
+```shell
+python build_deps/configure.py
+
+bazel build keras_cv/custom_ops:all
+mv bazel-bin/keras_cv/custom_ops/*.so keras_cv/custom_ops
+```
 
 ## Run tests
 
@@ -123,6 +145,16 @@ You can run the unit tests for KerasCV by running:
 ```
 pytest keras_cv/
 ```
+
+### Tests that require custom ops
+For tests that require custom ops, you'll have to compile the custom ops and make them available to your local Python code:
+```shell
+python build_deps/configure.py
+bazel build keras_cv/custom_ops:all
+cp bazel-bin/keras_cv/custom_ops/*.so keras_cv/custom_ops/
+```
+
+Tests which use custom ops are disabled by default, but can be run by setting the environment variable `TEST_CUSTOM_OPS=true`.
 
 ## Formatting the Code
 We use `flake8`, `isort` and `black` for code formatting.  You can run

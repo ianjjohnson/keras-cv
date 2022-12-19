@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from keras_cv.bounding_box.converters import _decode_deltas_to_boxes
+from keras_cv.bounding_box.converters import _encode_box_to_deltas
 from keras_cv.bounding_box.converters import convert_format
 from keras_cv.bounding_box.formats import CENTER_XYWH
 from keras_cv.bounding_box.formats import REL_XYXY
@@ -25,3 +27,4 @@ from keras_cv.bounding_box.utils import add_class_id
 from keras_cv.bounding_box.utils import clip_to_image
 from keras_cv.bounding_box.utils import filter_sentinels
 from keras_cv.bounding_box.utils import pad_with_sentinels
+from keras_cv.bounding_box.utils import preserve_rel

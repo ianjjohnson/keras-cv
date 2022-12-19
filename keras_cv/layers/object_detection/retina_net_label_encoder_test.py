@@ -40,12 +40,41 @@ class RetinaNetLabelEncoderTest(tf.test.TestCase):
         )
         encoder = cv_layers.RetinaNetLabelEncoder(
             anchor_generator=anchor_generator,
-            bounding_box_format="rel_xyxy",
+            bounding_box_format="xyxy",
         )
 
-        result = encoder(images, boxes)
+        box_targets, class_targets = encoder(images, boxes)
 
-        self.assertEqual(result.shape, [8, 49104, 5])
+        self.assertEqual(box_targets.shape, [8, 49104, 4])
+        self.assertEqual(class_targets.shape, [8, 49104])
+
+    def test_all_negative_1(self):
+        images_shape = (8, 512, 512, 3)
+        boxes_shape = (8, 10, 5)
+
+        images = tf.random.uniform(shape=images_shape)
+        boxes = -tf.ones(shape=boxes_shape, dtype=tf.float32)
+        strides = [2**i for i in range(3, 8)]
+        scales = [2**x for x in [0, 1 / 3, 2 / 3]]
+        sizes = [x**2 for x in [32.0, 64.0, 128.0, 256.0, 512.0]]
+        aspect_ratios = [0.5, 1.0, 2.0]
+
+        anchor_generator = cv_layers.AnchorGenerator(
+            bounding_box_format="yxyx",
+            sizes=sizes,
+            aspect_ratios=aspect_ratios,
+            scales=scales,
+            strides=strides,
+        )
+        encoder = cv_layers.RetinaNetLabelEncoder(
+            anchor_generator=anchor_generator,
+            bounding_box_format="xyxy",
+        )
+
+        box_targets, class_targets = encoder(images, boxes)
+
+        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(box_targets)))
+        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(class_targets)))
 
     def test_ragged_encoding(self):
         images_shape = (2, 512, 512, 3)
@@ -74,7 +103,8 @@ class RetinaNetLabelEncoderTest(tf.test.TestCase):
             bounding_box_format="xywh",
         )
 
-        result = encoder(images, y_true)
+        box_targets, class_targets = encoder(images, y_true)
 
         # 49104 is the anchor generator shape
-        self.assertEqual(result.shape, [2, 49104, 5])
+        self.assertEqual(box_targets.shape, [2, 49104, 4])
+        self.assertEqual(class_targets.shape, [2, 49104])

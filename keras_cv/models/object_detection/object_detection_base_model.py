@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import tensorflow as tf
+from keras.engine.training import _minimum_control_deps
+from keras.engine.training import reduce_per_replica
+from keras.utils import tf_utils
 from tensorflow import keras
 
 from keras_cv import bounding_box
@@ -44,13 +47,13 @@ class ObjectDetectionBaseModel(keras.Model):
         batch_size=None,
         **kwargs,
     ):
-        dataset = convert_inputs_to_tf_dataset(
-            x=x, y=y, sample_weight=sample_weight, batch_size=batch_size
-        )
         if validation_split and validation_data is None:
             (x, y, sample_weight,), validation_data = train_validation_split(
                 (x, y, sample_weight), validation_split=validation_split
             )
+        dataset = convert_inputs_to_tf_dataset(
+            x=x, y=y, sample_weight=sample_weight, batch_size=batch_size
+        )
 
         if validation_data is not None:
             val_x, val_y, val_sample = keras.utils.unpack_x_y_sample_weight(
@@ -95,19 +98,98 @@ class ObjectDetectionBaseModel(keras.Model):
         return super().evaluate(x=dataset, _use_cached_eval_dataset=False, **kwargs)
 
     def encode_data(self, x, y):
-        y_for_metrics = y
-
         y = bounding_box.convert_format(
             y,
             source=self.bounding_box_format,
             target=self.label_encoder.bounding_box_format,
             images=x,
         )
-        y_training_target = self.label_encoder(x, y)
-        y_training_target = bounding_box.convert_format(
-            y_training_target,
+        box_targets, class_targets = self.label_encoder(x, y)
+        box_targets = bounding_box.convert_format(
+            box_targets,
             source=self.label_encoder.bounding_box_format,
             target=self.bounding_box_format,
             images=x,
         )
-        return x, (y_for_metrics, y_training_target)
+        return x, {"boxes": box_targets, "classes": class_targets}
+
+    def make_predict_function(self, force=False):
+        if self.predict_function is not None and not force:
+            return self.predict_function
+
+        def step_function(model, iterator):
+            """Runs a single evaluation step."""
+
+            def run_step(data):
+                outputs = model.predict_step(data)
+                # Ensure counter is updated only if `test_step` succeeds.
+                with tf.control_dependencies(_minimum_control_deps(outputs)):
+                    model._predict_counter.assign_add(1)
+                return outputs
+
+            if self._jit_compile:
+                run_step = tf.function(
+                    run_step, jit_compile=True, reduce_retracing=True
+                )
+
+            data = next(iterator)
+            outputs = model.distribute_strategy.run(run_step, args=(data,))
+            outputs = reduce_per_replica(
+                outputs, self.distribute_strategy, reduction="concat"
+            )
+            # Note that this is the only deviation from the base keras.Model
+            # implementation. We add the decode_step inside of the computation
+            # graph but outside of the distribute_strategy (i.e on host CPU).
+            if not isinstance(data, tf.Tensor):
+                data = tf.concat(data.values, axis=0)
+            return self.decode_predictions(outputs, data)
+
+        # Special case if steps_per_execution is one.
+        if (
+            self._steps_per_execution is None
+            or self._steps_per_execution.numpy().item() == 1
+        ):
+
+            def predict_function(iterator):
+                """Runs an evaluation execution with a single step."""
+                return step_function(self, iterator)
+
+        else:
+
+            def predict_function(iterator):
+                """Runs an evaluation execution with multiple steps."""
+                outputs = step_function(self, iterator)
+                for _ in tf.range(self._steps_per_execution - 1):
+                    tf.autograph.experimental.set_loop_options(
+                        shape_invariants=[
+                            (
+                                outputs,
+                                tf.nest.map_structure(
+                                    lambda t: tf_utils.get_tensor_spec(
+                                        t, dynamic_batch=True
+                                    ).shape,
+                                    outputs,
+                                ),
+                            )
+                        ]
+                    )
+                    step_outputs = step_function(self, iterator)
+                    outputs = tf.nest.map_structure(
+                        lambda t1, t2: tf.concat([t1, t2]), outputs, step_outputs
+                    )
+                return outputs
+
+        if not self.run_eagerly:
+            predict_function = tf.function(predict_function, reduce_retracing=True)
+        self.predict_function = predict_function
+
+        return self.predict_function
+
+    def decode_predictions(self, predictions, images):
+        """Decode predictions (e.g. with an NmsPredictionDecoder).
+
+        By default, this returns raw training predictions.
+        Subclasses that which to return decoded boxes should override this method.
+        """
+
+        return predictions

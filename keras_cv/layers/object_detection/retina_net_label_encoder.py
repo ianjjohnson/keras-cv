@@ -53,6 +53,9 @@ class RetinaNetLabelEncoder(layers.Layer):
         self.box_variance = tf.convert_to_tensor(box_variance, dtype=self.dtype)
         self.background_class = background_class
         self.ignore_class = ignore_class
+        self.matched_boxes_metric = tf.keras.metrics.BinaryAccuracy(
+            name="percent_boxes_matched_with_anchor"
+        )
         self.built = True
 
     def _match_anchor_boxes(
@@ -99,18 +102,6 @@ class RetinaNetLabelEncoder(layers.Layer):
             tf.cast(ignore_mask, dtype=self.dtype),
         )
 
-    def _compute_box_target(self, anchor_boxes, matched_gt_boxes):
-        """Transforms the ground truth boxes into targets for training"""
-        box_target = tf.concat(
-            [
-                (matched_gt_boxes[:, :2] - anchor_boxes[:, :2]) / anchor_boxes[:, 2:],
-                tf.math.log(matched_gt_boxes[:, 2:] / anchor_boxes[:, 2:]),
-            ],
-            axis=-1,
-        )
-        box_target = box_target / self.box_variance
-        return box_target
-
     def _encode_sample(self, gt_boxes, anchor_boxes):
         """Creates box and classification targets for a single sample"""
         cls_ids = gt_boxes[:, 4]
@@ -120,7 +111,13 @@ class RetinaNetLabelEncoder(layers.Layer):
             anchor_boxes, gt_boxes
         )
         matched_gt_boxes = tf.gather(gt_boxes, matched_gt_idx)
-        box_target = self._compute_box_target(anchor_boxes, matched_gt_boxes)
+        box_target = bounding_box._encode_box_to_deltas(
+            anchors=anchor_boxes,
+            boxes=matched_gt_boxes,
+            anchor_format=self.bounding_box_format,
+            box_format="xywh",
+            variance=self.box_variance,
+        )
         matched_gt_cls_ids = tf.gather(cls_ids, matched_gt_idx)
         cls_target = tf.where(
             tf.not_equal(positive_mask, 1.0), self.background_class, matched_gt_cls_ids
@@ -128,6 +125,27 @@ class RetinaNetLabelEncoder(layers.Layer):
         cls_target = tf.where(tf.equal(ignore_mask, 1.0), self.ignore_class, cls_target)
         cls_target = tf.expand_dims(cls_target, axis=-1)
         label = tf.concat([box_target, cls_target], axis=-1)
+
+        # In the case that a box in the corner of an image matches with an all -1 box
+        # that is outside of the image, we should assign the box to the ignore class
+        # There are rare cases where a -1 box can be matched, resulting in a NaN during
+        # training.  The unit test passing all -1s to the label encoder ensures that we
+        # properly handle this edge-case.
+        label = tf.where(
+            tf.expand_dims(tf.math.reduce_any(tf.math.is_nan(label), axis=-1), axis=-1),
+            self.ignore_class,
+            label,
+        )
+
+        n_boxes = tf.shape(gt_boxes)[0]
+        box_ids = tf.range(n_boxes, dtype=matched_gt_idx.dtype)
+        matched_ids = tf.expand_dims(matched_gt_idx, axis=1)
+        matches = box_ids == matched_ids
+        matches = tf.math.reduce_any(matches, axis=0)
+        self.matched_boxes_metric.update_state(
+            tf.zeros((n_boxes,), dtype=tf.int32),
+            tf.cast(matches, tf.int32),
+        )
         return label
 
     def call(self, images, target_boxes):
@@ -142,7 +160,7 @@ class RetinaNetLabelEncoder(layers.Layer):
         target_boxes = bounding_box.convert_format(
             target_boxes, source=self.bounding_box_format, target="xywh", images=images
         )
-        anchor_boxes = self.anchor_generator(images[0])
+        anchor_boxes = self.anchor_generator(image_shape=tf.shape(images[0]))
         anchor_boxes = tf.concat(list(anchor_boxes.values()), axis=0)
         anchor_boxes = bounding_box.convert_format(
             anchor_boxes,
@@ -152,12 +170,17 @@ class RetinaNetLabelEncoder(layers.Layer):
         )
 
         if isinstance(target_boxes, tf.RaggedTensor):
-            target_boxes = target_boxes.to_tensor(default_value=-1)
+            target_boxes = target_boxes.to_tensor(
+                default_value=-1, shape=(None, None, 5)
+            )
 
         result = tf.map_fn(
             elems=(target_boxes),
             fn=lambda box_set: self._encode_sample(box_set, anchor_boxes),
         )
-        return bounding_box.convert_format(
+        result = bounding_box.convert_format(
             result, source="xywh", target=self.bounding_box_format, images=images
         )
+        encoded_box_targets = result[..., :4]
+        class_targets = result[..., 4]
+        return encoded_box_targets, class_targets

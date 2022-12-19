@@ -118,7 +118,7 @@ class RandomColorJitter(BaseImageAugmentationLayer):
             image,
             original_range=self.value_range,
             target_range=(0, 255),
-            dtype=image.dtype,
+            dtype=self.compute_dtype,
         )
         image = self.random_brightness(image)
         image = self.random_contrast(image)
@@ -128,7 +128,7 @@ class RandomColorJitter(BaseImageAugmentationLayer):
             image,
             original_range=(0, 255),
             target_range=self.value_range,
-            dtype=image.dtype,
+            dtype=self.compute_dtype,
         )
         return image
 
@@ -137,6 +137,9 @@ class RandomColorJitter(BaseImageAugmentationLayer):
 
     def augment_label(self, label, transformation=None, **kwargs):
         return label
+
+    def augment_segmentation_mask(self, segmentation_mask, transformation, **kwargs):
+        return segmentation_mask
 
     def get_config(self):
         config = super().get_config()

@@ -32,11 +32,18 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Install dependencies
       run: |
-        pip install tensorflow==2.9.1
+        pip install tensorflow-cpu==2.10.0
         pip install -e ".[tests]" --progress-bar off --upgrade
-    - name: Test with pytest
+    - name: Build custom ops for tests
       run: |
-        pytest keras_cv/
+        python build_deps/configure.py
+        bazel build keras_cv/custom_ops:all
+        cp bazel-bin/keras_cv/custom_ops/*.so keras_cv/custom_ops/
+    - name: Test with pytest
+      env:
+        TEST_CUSTOM_OPS: true
+      run: |
+        pytest keras_cv/ --ignore keras_cv/models --ignore keras_cv/datasets/waymo
   format:
     name: Check the code format
     runs-on: ubuntu-latest
@@ -60,7 +67,7 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Install dependencies
       run: |
-        pip install tensorflow==2.9.1
+        pip install tensorflow==2.10.0
         pip install -e ".[tests]" --progress-bar off --upgrade
     - name: Lint
       run: bash shell/lint.sh
@@ -76,7 +83,7 @@ jobs:
         python-version: 3.7
     - name: Install dependencies
       run: |
-        pip install tensorflow==2.9.1
+        pip install tensorflow==2.10.0
         python -m pip install --upgrade pip setuptools wheel twine
     - name: Build and publish
       env:
