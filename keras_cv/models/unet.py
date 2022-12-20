@@ -20,7 +20,89 @@ Reference:
 
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import regularizers
+from tensorflow.keras import initializers
 
+def UPillarBlock(filters, downsample):
+    def apply(x):
+        input_depth = x.shape.as_list()[-1]
+        stride = 2 if downsample else 1
+
+        residual = x
+
+        x = layers.Conv2D(filters, 3, stride, padding='same', kernel_initializer=initializers.VarianceScaling(), kernel_regularizer=regularizers.L2(l2=1e-4))(x)
+        x = layers.BatchNormalization(synchronized=True, beta_regularizer=regularizers.L2(l2=1e-8), gamma_regularizer=regularizers.L2(l2=1e-8))(x)
+        x = layers.ReLU()(x)
+
+        x = layers.Conv2D(filters, 3, 1, padding='same', kernel_initializer=initializers.VarianceScaling(), kernel_regularizer=regularizers.L2(l2=1e-4))(x)
+        x = layers.BatchNormalization(synchronized=True, beta_regularizer=regularizers.L2(l2=1e-8), gamma_regularizer=regularizers.L2(l2=1e-8))(x)
+
+        if downsample:
+            residual = layers.MaxPool2D(pool_size=2, strides=2, padding='SAME')(residual)
+
+        if input_depth != filters:
+            residual = layers.Conv2D(filters, 1, 1, padding='same', kernel_initializer=initializers.VarianceScaling(), kernel_regularizer=regularizers.L2(l2=1e-4))(residual)
+
+        x = x + residual
+        x = layers.ReLU()(x)
+
+        return x
+
+    return apply
+
+def SkipBlock(filters):
+    def apply(x):
+        x = layers.Conv2D(
+            filters, 1, 1, kernel_initializer=initializers.VarianceScaling(), kernel_regularizer=regularizers.L2(l2=1e-4)
+        )(x)
+        x = layers.BatchNormalization(synchronized=True, beta_regularizer=regularizers.L2(l2=1e-8), gamma_regularizer=regularizers.L2(l2=1e-8))(x)
+        x = layers.ReLU()(x)
+
+        return x
+
+    return apply
+
+def DownSampleBlock(filters, num_blocks):
+    def apply(x):
+        x = UPillarBlock(filters, downsample=True)(x)
+
+        for _ in range(num_blocks-1):
+            x = UPillarBlock(filters)(x)
+
+        return x
+
+    return apply
+
+def UpSampleBlock(filters):
+    def apply(x, lateral_input):
+        x = layers.Conv2DTranspose(
+          filters, 3, 2, padding='same', kernel_initializer=initializers.VarianceScaling(), kernel_regularizer=regularizers.L2(l2=1e-4)
+        )(x)
+        x = layers.BatchNormalization(synchronized=True, beta_regularizer=regularizers.L2(l2=1e-8), gamma_regularizer=regularizers.L2(l2=1e-8))(x)
+        x = layers.ReLU()(x)
+
+        lateral_input = SkipBlock(filters)(lateral_input)
+
+        x = x + lateral_input
+        x = UPillarBlock(filters, downsample=False)
+
+        return x
+
+    return apply
+
+def UNet(down_blocks, up_blocks):
+    def apply(x):
+        skip_connections = []
+        for filters, num_blocks in down_blocks:
+            skip_connections.append(x)
+            x = DownSampleBlock(filters, num_blocks)(x)
+
+        for filters in up_blocks:
+            x = UpSampleBlock(filters)(x, skip_connections.pop())
+
+        return x
+
+    return apply
 
 def ResidualBlock(width):
     def apply(x):
@@ -39,7 +121,6 @@ def ResidualBlock(width):
 
     return apply
 
-
 def DownBlock(width, block_depth, block_scale_factor):
     def apply(x):
         x, skips = x
@@ -52,12 +133,12 @@ def DownBlock(width, block_depth, block_scale_factor):
     return apply
 
 
-def UpBlock(width, block_depth, block_scale_factor, include_skip_connections):
+def UpBlock(width, block_depth, block_scale_factor, include_skip_connections, skip_block):
     def apply(x):
         x, skips = x
         x = layers.UpSampling2D(size=block_scale_factor, interpolation="bilinear")(x)
         if include_skip_connections:
-            x = layers.Concatenate()([x, skips.pop()])
+            x = layers.Concatenate()([x, skip_block(width)(skips.pop())])
         for index in range(block_depth):
             x = ResidualBlock(width)(x)
         return x
@@ -77,6 +158,7 @@ def UNet(
     input_shape=(224, 224, 3),
     output_channels=3,
     include_skip_connections=False,
+    skip_block=None,
     weights=None,
     name="Unet",
     output_activation=None,
@@ -100,6 +182,11 @@ def UNet(
     if not ((block_widths is None) ^ (bottleneck_width is None)):
         raise ValueError(
             "`bottleneck_width` must be specified when using `down_block_widths` and/or `up_block_widths`, but not when using `block_widths`"
+        )
+
+    if skip_block and not include_skip_connections:
+        raise ValueError(
+            "`skip_block` should be defined iff `include_skip_connections=True`"
         )
 
     if block_widths:

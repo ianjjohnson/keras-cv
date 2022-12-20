@@ -115,6 +115,21 @@ class UNetTest(tf.test.TestCase, parameterized.TestCase):
             up_block_widths=[64, 64],
         )
 
+    def test_skip_block_supported_iff_using_skip_connections(self):
+        with self.assertRaises(ValueError):
+            _ = unet.UNet(
+                include_rescaling=True,
+                block_widths=[32, 64],
+                skip_block=lambda x: x,
+            )
+
+        _ = unet.UNet(
+            include_rescaling=True,
+            block_widths=[32, 64],
+            include_skip_connections=True,
+            skip_block=lambda x: x,
+        )
+
 
 if __name__ == "__main__":
     tf.test.main()
