@@ -281,7 +281,7 @@ class RetinaNet(tf.keras.Model):
         """
         if "metrics" in kwargs.keys():
             raise ValueError("currently metrics support is not supported intentionally")
-        super().compile(**kwargs)
+
         if loss is not None:
             raise ValueError(
                 "`RetinaNet` does not accept a `loss` to `compile()`. "
