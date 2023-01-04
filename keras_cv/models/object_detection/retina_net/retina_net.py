@@ -127,9 +127,7 @@ class RetinaNet(tf.keras.Model):
                 f"Received `bounding_box_format={bounding_box_format}`"
             )
 
-        self.bounding_box_format = bounding_box_format
-        self.classes = classes
-        self.backbone = (
+        backbone = (
             backbone
             or keras_cv.models.ResNet50(
                 include_top=False, include_rescaling=True
