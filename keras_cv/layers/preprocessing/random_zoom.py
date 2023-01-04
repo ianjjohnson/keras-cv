@@ -15,6 +15,7 @@
 
 import tensorflow as tf
 from keras import backend
+from keras_cv import bounding_box
 
 from keras_cv.layers.preprocessing.base_image_augmentation_layer import (
     BaseImageAugmentationLayer,
@@ -95,6 +96,7 @@ class RandomZoom(BaseImageAugmentationLayer):
         width_factor=None,
         fill_mode="reflect",
         interpolation="bilinear",
+        bounding_box_format=None,
         seed=None,
         fill_value=0.0,
         **kwargs,
@@ -134,6 +136,7 @@ class RandomZoom(BaseImageAugmentationLayer):
         self.fill_mode = fill_mode
         self.fill_value = fill_value
         self.interpolation = interpolation
+        self.bounding_box_format = bounding_box_format
         self.seed = seed
 
     def get_random_transformation(self, image=None, **kwargs):
@@ -177,12 +180,78 @@ class RandomZoom(BaseImageAugmentationLayer):
     def augment_label(self, label, transformation, **kwargs):
         return label
 
+    def augment_bounding_boxes(
+        self, bounding_boxes, transformation, image=None, **kwargs
+    ):
+        if self.bounding_box_format is None:
+            raise ValueError(
+                "`RandomZoom()` was called with bounding boxes, "
+                "but no `bounding_box_format` was specified in the constructor. "
+                "Please specify a bounding box format in the constructor. i.e. "
+                "`RandomZoom(bounding_box_format='xyxy')`"
+            )
+
+        if self.fill_mode not in ["constant", "nearest"]:
+            raise ValueError(
+                "`RandomZoom() was called with bounding boxes, but the `fill_mode` "
+                f"is {self.fill_mode}, which is not one of the supported modes for "
+                "bounding boxes ('constant' or 'nearest')."
+            )
+
+        bounding_boxes = bounding_box.convert_format(
+            bounding_boxes,
+            source=self.bounding_box_format,
+            target="xyxy",
+            images=image,
+        )
+        height_zoom = transformation["height_zoom"]
+        width_zoom = transformation["width_zoom"]
+
+        image_shape = tf.shape(image)
+
+        image_height = tf.cast(image_shape[H_AXIS], self.compute_dtype)
+        image_width = tf.cast(image_shape[W_AXIS], self.compute_dtype)
+        width_zoom = transformation["width_zoom"]
+        height_zoom = transformation["height_zoom"]
+        zooms = tf.cast(tf.concat([width_zoom, height_zoom], axis=1), dtype=self.compute_dtype)
+        x_offset = ((image_width - 1.0) / 2.0) * (1.0 - zooms[:, 0, None])
+        y_offset = ((image_height - 1.0) / 2.0) * (1.0 - zooms[:, 1, None])
+
+        x1, y1, x2, y2, rest = tf.split(
+            bounding_boxes, [1, 1, 1, 1, bounding_boxes.shape[-1] - 4], axis=-1
+        )
+        bounding_boxes = tf.concat(
+            [
+                x1 / width_zoom + x_offset,
+                y1 / height_zoom + y_offset,
+                x2 / width_zoom + x_offset,
+                y2 / height_zoom + y_offset,
+                rest,
+            ],
+            axis=-1,
+        )
+
+        bounding_boxes = bounding_box.clip_to_image(
+            bounding_boxes,
+            bounding_box_format="xyxy",
+            image_shape=image_shape,
+        )
+        bounding_boxes = bounding_box.convert_format(
+            bounding_boxes,
+            source="xyxy",
+            target=self.bounding_box_format,
+            dtype=self.compute_dtype,
+            images=image,
+        )
+        return bounding_boxes
+
     def get_config(self):
         config = {
             "height_factor": self.height_factor,
             "width_factor": self.width_factor,
             "fill_mode": self.fill_mode,
             "fill_value": self.fill_value,
+            "bounding_box_format": self.bounding_box_format,
             "interpolation": self.interpolation,
             "seed": self.seed,
         }
