@@ -306,7 +306,7 @@ class StableDiffusionBase:
 
         mask = tf.expand_dims(mask, axis=-1)
         mask = tf.cast(
-            tf.nn.max_pool2d(mask, ksize=8, strides=8, padding="SAME"),
+            tf.nn.max_pool2d(mask, ksize=8, strides=8, padding="VALID"),
             dtype=tf.float32,
         )
         mask = tf.squeeze(mask)
