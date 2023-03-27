@@ -49,8 +49,8 @@ class ImageEncoder(keras.Sequential):
                 ResnetBlock(512),
                 keras.layers.GroupNormalization(epsilon=1e-5),
                 keras.layers.Activation("swish"),
-                PaddedConv2D(8, 3, padding=1, conv_padding="same"),
-                PaddedConv2D(8, 1, conv_padding="same"),
+                PaddedConv2D(8, 3, padding=1),
+                PaddedConv2D(8, 1),
                 # Lambda gets rid of padding from the sides of the encoding.
                 keras.layers.Lambda(lambda x: x[..., 1:, 1:, :]),
                 # TODO(lukewood): can this be refactored to be a Rescaling layer?
