@@ -136,8 +136,7 @@ class Task(keras.Model):
             return model
 
         weights = keras.utils.get_file(
-            "model.h5",
-            metadata["weights_url"],
+            origin=metadata["weights_url"],
             cache_subdir=os.path.join("models", preset),
             file_hash=metadata["weights_hash"],
         )
