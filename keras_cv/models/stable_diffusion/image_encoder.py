@@ -32,7 +32,7 @@ class ImageEncoder(keras.Sequential):
         super().__init__(
             [
                 keras.layers.Input((img_height, img_width, 3)),
-                PaddedConv2D(128, 3, padding=2)
+                PaddedConv2D(128, 3, padding=2),
                 ResnetBlock(128),
                 ResnetBlock(128),
                 PaddedConv2D(128, 3, padding=1, strides=2)
