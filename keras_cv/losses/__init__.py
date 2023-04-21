@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from keras_cv.losses.center_net_box_loss import CenterNetBoxLoss
+from keras_cv.losses.distribution_focal_loss import DistributionFocalLoss
 from keras_cv.losses.focal import FocalLoss
 from keras_cv.losses.giou_loss import GIoULoss
 from keras_cv.losses.iou_loss import IoULoss
