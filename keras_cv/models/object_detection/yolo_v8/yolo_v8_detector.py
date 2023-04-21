@@ -318,6 +318,22 @@ def dist2bbox(distance, anchor_points):
     return tf.concat((x1y1, x2y2), axis=-1)  # xyxy bbox
 
 
+def bbox2dist(distance, anchor_points):
+    """Encodes xyxy boxes into distance values (left / top / right / bottom).
+
+    This is used to create ltrb distances from target boxes for distribution
+    focal loss.
+    """
+    x1y1, x2y2 = tf.split(distance, 2, axis=-1)
+    left_top = anchor_points - x1y1
+    right_bottom = x2y2 - anchor_points
+    return tf.clip_by_value(
+        tf.concat((left_top, right_bottom), axis=-1),
+        0,
+        (BOX_REGRESSION_CHANNELS // 4) - 1.01,
+    )
+
+
 @keras.utils.register_keras_serializable(package="keras_cv")
 class YOLOV8Detector(Task):
     """Implements the YOLOV8 architecture for object detection.
@@ -445,8 +461,10 @@ class YOLOV8Detector(Task):
         self,
         box_loss,
         classification_loss,
+        regression_loss=None,
         box_loss_weight=7.5,
         classification_loss_weight=0.5,
+        regression_loss_weight=1.5,
         metrics=None,
         **kwargs,
     ):
@@ -462,10 +480,15 @@ class YOLOV8Detector(Task):
             classification_loss: a Keras loss to use for box classification. A
                 preconfigured loss is provided when the string
                 "binary_crossentropy" is passed.
+            regression_loss: (optional) a Keras loss to use for box regression.
+                A preconfigured loss is provided when the string
+                "distribution_focal" is passed.
             box_loss_weight: (optional) float, a scaling factor for the box
                 loss. Defaults to 7.5.
             classification_loss_weight: (optional) float, a scaling factor for
                 the classification loss. Defaults to 0.5.
+            regression_loss_weight: (optional) float, a scaling factor for the
+                regression loss. Defaults to 1.5
             kwargs: most other `keras.Model.compile()` arguments are supported
                 and propagated to the `keras.Model` class.
         """
@@ -492,15 +515,32 @@ class YOLOV8Detector(Task):
                     "keras.Loss or the string 'binary_crossentropy'."
                 )
 
+        if isinstance(regression_loss, str):
+            if regression_loss == "distribution_focal":
+                regression_loss = keras_cv.losses.DistributionFocalLoss(
+                    reduction="sum"
+                )
+            else:
+                raise ValueError(
+                    "Invalid regression loss for YOLOV8Detector: "
+                    f"{regression_loss}. Regression loss should be a "
+                    "keras.Loss or the string 'distribution_focal'."
+                )
+
         self.box_loss = box_loss
         self.classification_loss = classification_loss
+        self.regression_loss = regression_loss
         self.box_loss_weight = box_loss_weight
         self.classification_loss_weight = classification_loss_weight
+        self.regression_loss_weight = regression_loss_weight
 
         losses = {
             "box": self.box_loss,
             "class": self.classification_loss,
         }
+
+        if regression_loss:
+            losses["regression"] = self.regression_loss
 
         super().compile(loss=losses, **kwargs)
 
@@ -575,6 +615,23 @@ class YOLOV8Detector(Task):
             "box": self.box_loss_weight * box_weight / target_scores_sum,
             "class": self.classification_loss_weight / target_scores_sum,
         }
+
+        if self.regression_loss:
+            y_true["regression"] = bbox2dist(target_bboxes, anchor_points)[
+                fg_mask
+            ]
+            y_pred["regression"] = tf.reshape(
+                box_pred[fg_mask], (-1, BOX_REGRESSION_CHANNELS // 4)
+            )
+
+            per_sample_regression_weights = tf.reduce_sum(
+                target_scores, axis=-1
+            )[fg_mask]
+            sample_weights["regression"] = (
+                self.regression_loss_weight
+                * per_sample_regression_weights
+                / target_scores_sum
+            )
 
         return super().compute_loss(
             x=x, y=y_true, y_pred=y_pred, sample_weight=sample_weights
