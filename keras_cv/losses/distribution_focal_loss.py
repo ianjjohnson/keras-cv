@@ -64,14 +64,14 @@ class DistributionFocalLoss(keras.losses.Loss):
                 tf.reshape(target_left, (-1,)), y_pred
             )
             * weight_left,
-            y_true.shape,
+            tf.shape(y_true),
         )
         right_loss = tf.reshape(
             keras.losses.sparse_categorical_crossentropy(
                 tf.reshape(target_right, (-1,)), y_pred
             )
             * weight_right,
-            y_true.shape,
+            tf.shape(y_true),
         )
 
         return tf.reduce_mean(left_loss + right_loss, axis=-1, keepdims=True)
