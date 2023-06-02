@@ -34,7 +34,7 @@ jobs:
       run: |
         pip install tensorflow==2.12.0
         pip install "jax[cpu]"
-        pip install namex
+        pip install namex rich
         pip install -e ".[tests]" --progress-bar off --upgrade
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
@@ -73,7 +73,7 @@ jobs:
       run: |
         pip install tensorflow==2.12.0
         pip install "jax[cpu]"
-        pip install namex
+        pip install namex rich
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
         pip install -e ".[tests]" --progress-bar off --upgrade
