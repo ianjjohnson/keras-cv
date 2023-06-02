@@ -33,6 +33,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install tensorflow==2.12.0
+        pip install namex
         pip install -e ".[tests]" --progress-bar off --upgrade
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
@@ -71,6 +72,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install tensorflow==2.12.0
+        pip install namex
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
         pip install -e ".[tests]" --progress-bar off --upgrade
