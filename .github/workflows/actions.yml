@@ -33,11 +33,11 @@ jobs:
     - name: Install dependencies
       run: |
         pip install tensorflow==2.12.0
+        pip install "jax[cpu]"
         pip install namex
         pip install -e ".[tests]" --progress-bar off --upgrade
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
-        pip install "jax[cpu]"
     # - name: Build custom ops for tests
     #   run: |
     #     python build_deps/configure.py
@@ -72,11 +72,11 @@ jobs:
     - name: Install dependencies
       run: |
         pip install tensorflow==2.12.0
+        pip install "jax[cpu]"
         pip install namex
         git clone https://ianstenbit:${{ secrets.PAT }}@github.com/keras-team/keras-core.git
         cd keras-core && python pip_build.py
         pip install -e ".[tests]" --progress-bar off --upgrade
-        pip install "jax[cpu]"
     - name: Test with pytest
       env:
         TEST_CUSTOM_OPS: false # TODO(ianstenbit): test custom ops, or figure out what our story is here
