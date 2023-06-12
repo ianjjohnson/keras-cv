@@ -14,12 +14,13 @@
 import copy
 import warnings
 
-import tensorflow as tf
-from keras import layers
-from tensorflow import keras
-
 import keras_cv
 from keras_cv import bounding_box
+
+# import tensorflow as tf
+from keras_cv.backend import keras
+from keras_cv.backend import keras_core_backend
+from keras_cv.backend import ops
 from keras_cv.losses.ciou_loss import CIoULoss
 from keras_cv.models.backbones.backbone_presets import backbone_presets
 from keras_cv.models.backbones.backbone_presets import (
@@ -72,35 +73,36 @@ def get_anchors(
         two together will yield the centerpoints in absolute x,y format.
 
     """
-    base_anchors = tf.constant(base_anchors, dtype=tf.float32)
+    base_anchors = ops.array(base_anchors, dtype="float32")
 
     all_anchors = []
     all_strides = []
     for stride in strides:
-        hh_centers = tf.range(start=0, limit=image_shape[0], delta=stride)
-        ww_centers = tf.range(start=0, limit=image_shape[1], delta=stride)
-        ww_grid, hh_grid = tf.meshgrid(ww_centers, hh_centers)
-        grid = tf.cast(
-            tf.reshape(tf.stack([hh_grid, ww_grid], 2), [-1, 1, 2]),
-            tf.float32,
+        hh_centers = ops.arange(start=0, stop=image_shape[0], step=stride)
+        ww_centers = ops.arange(start=0, stop=image_shape[1], step=stride)
+        ww_grid, hh_grid = ops.meshgrid(ww_centers, hh_centers)
+        grid = ops.cast(
+            ops.reshape(ops.stack([hh_grid, ww_grid], 2), [-1, 1, 2]),
+            "float32",
         )
-        anchors = tf.expand_dims(base_anchors * [stride, stride], 0) + grid
-        anchors = tf.reshape(anchors, [-1, 2])
+        anchors = ops.expand_dims(base_anchors * [stride, stride], 0) + grid
+        anchors = ops.reshape(anchors, [-1, 2])
         all_anchors.append(anchors)
-        all_strides.append(tf.repeat(stride, anchors.shape[0]))
+        all_strides.append(ops.repeat(stride, anchors.shape[0]))
 
-    all_anchors = tf.cast(tf.concat(all_anchors, axis=0), tf.float32)
-    all_strides = tf.cast(tf.concat(all_strides, axis=0), tf.float32)
+    all_anchors = ops.cast(ops.concatenate(all_anchors, axis=0), "float32")
+    all_strides = ops.cast(ops.concatenate(all_strides, axis=0), "float32")
 
     all_anchors = all_anchors / all_strides[:, None]
 
     # Swap the x and y coordinates of the anchors.
-    all_anchors = tf.concat(
-        [all_anchors[:, 1, tf.newaxis], all_anchors[:, 0, tf.newaxis]], axis=-1
+    all_anchors = ops.concatenate(
+        [all_anchors[:, 1, None], all_anchors[:, 0, None]], axis=-1
     )
     return all_anchors, all_strides
 
 
+# TODO: uses conv_bn, csp  => convert to layer
 def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     """Applies the Feature Pyramid Network (FPN) to the outputs of a backbone.
 
@@ -120,8 +122,8 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     p3, p4, p5 = features
 
     # Upsample P5 and concatenate with P4, then apply a CSPBlock.
-    p5_upsampled = tf.image.resize(p5, tf.shape(p4)[1:-1], method="nearest")
-    p4p5 = tf.concat([p5_upsampled, p4], axis=-1)
+    p5_upsampled = ops.image.resize(p5, ops.shape(p4)[1:-1], method="nearest")
+    p4p5 = ops.concatenate([p5_upsampled, p4], axis=-1)
     p4p5 = apply_csp_block(
         p4p5,
         channels=p4.shape[-1],
@@ -132,8 +134,10 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     )
 
     # Upsample P4P5 and concatenate with P3, then apply a CSPBlock.
-    p4p5_upsampled = tf.image.resize(p4p5, tf.shape(p3)[1:-1], method="nearest")
-    p3p4p5 = tf.concat([p4p5_upsampled, p3], axis=-1)
+    p4p5_upsampled = ops.image.resize(
+        p4p5, ops.shape(p3)[1:-1], method="nearest"
+    )
+    p3p4p5 = ops.concatenate([p4p5_upsampled, p3], axis=-1)
     p3p4p5 = apply_csp_block(
         p3p4p5,
         channels=p3.shape[-1],
@@ -152,7 +156,7 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
         activation="swish",
         name=f"{name}_p3p4p5_downsample1",
     )
-    p3p4p5_d1 = tf.concat([p3p4p5_d1, p4p5], axis=-1)
+    p3p4p5_d1 = ops.concatenate([p3p4p5_d1, p4p5], axis=-1)
     p3p4p5_d1 = apply_csp_block(
         p3p4p5_d1,
         channels=p4p5.shape[-1],
@@ -171,7 +175,7 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
         activation="swish",
         name=f"{name}_p3p4p5_downsample2",
     )
-    p3p4p5_d2 = tf.concat([p3p4p5_d2, p5], axis=-1)
+    p3p4p5_d2 = ops.concatenate([p3p4p5_d2, p5], axis=-1)
     p3p4p5_d2 = apply_csp_block(
         p3p4p5_d2,
         channels=p5.shape[-1],
@@ -183,6 +187,7 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     return [p3p4p5, p3p4p5_d1, p3p4p5_d2]
 
 
+# TODO: uses conv_bn, csp  ==> convert_to_layer
 def apply_yolo_v8_head(
     inputs,
     num_classes,
@@ -236,7 +241,7 @@ def apply_yolo_v8_head(
             activation="swish",
             name=f"{cur_name}_box_2",
         )
-        box_predictions = layers.Conv2D(
+        box_predictions = keras.layers.Conv2D(
             filters=BOX_REGRESSION_CHANNELS,
             kernel_size=1,
             name=f"{cur_name}_box_3_conv",
@@ -256,25 +261,25 @@ def apply_yolo_v8_head(
             activation="swish",
             name=f"{cur_name}_class_2",
         )
-        class_predictions = layers.Conv2D(
+        class_predictions = keras.layers.Conv2D(
             filters=num_classes,
             kernel_size=1,
             name=f"{cur_name}_class_3_conv",
         )(class_predictions)
-        class_predictions = layers.Activation(
+        class_predictions = keras.layers.Activation(
             "sigmoid", name=f"{cur_name}_classifier"
         )(class_predictions)
 
-        out = tf.concat([box_predictions, class_predictions], axis=-1)
-        out = layers.Reshape(
+        out = ops.concatenate([box_predictions, class_predictions], axis=-1)
+        out = keras.layers.Reshape(
             [-1, out.shape[-1]], name=f"{cur_name}_output_reshape"
         )(out)
         outputs.append(out)
 
-    outputs = tf.concat(outputs, axis=1)
-    outputs = layers.Activation("linear", dtype="float32", name="box_outputs")(
-        outputs
-    )
+    outputs = ops.concatenate(outputs, axis=1)
+    outputs = keras.layers.Activation(
+        "linear", dtype="float32", name="box_outputs"
+    )(outputs)
 
     return {
         "boxes": outputs[:, :, :BOX_REGRESSION_CHANNELS],
@@ -293,13 +298,13 @@ def decode_regression_to_boxes(preds):
     predictions are relative to the stride of an anchor box (and correspondingly
     relative to the scale of the feature map from which the predictions came).
     """
-    preds_bbox = tf.reshape(
+    preds_bbox = ops.reshape(
         preds, (-1, preds.shape[1], 4, BOX_REGRESSION_CHANNELS // 4)
     )
-    preds_bbox = tf.nn.softmax(preds_bbox, axis=-1) * tf.range(
+    preds_bbox = ops.nn.softmax(preds_bbox, axis=-1) * ops.arange(
         BOX_REGRESSION_CHANNELS // 4, dtype="float32"
     )
-    return tf.reduce_sum(preds_bbox, axis=-1)
+    return ops.sum(preds_bbox, axis=-1)
 
 
 def dist2bbox(distance, anchor_points):
@@ -311,10 +316,10 @@ def dist2bbox(distance, anchor_points):
     The resulting xyxy predictions must be scaled by the stride of their
     corresponding anchor points to yield an absolute xyxy box.
     """
-    left_top, right_bottom = tf.split(distance, 2, axis=-1)
+    left_top, right_bottom = ops.split(distance, 2, axis=-1)
     x1y1 = anchor_points - left_top
     x2y2 = anchor_points + right_bottom
-    return tf.concat((x1y1, x2y2), axis=-1)  # xyxy bbox
+    return ops.concatenate((x1y1, x2y2), axis=-1)  # xyxy bbox
 
 
 @keras.utils.register_keras_serializable(package="keras_cv")
@@ -403,7 +408,7 @@ class YOLOV8Detector(Task):
             backbone, extractor_layer_names, extractor_levels
         )
 
-        images = layers.Input(feature_extractor.input_shape[1:])
+        images = keras.layers.Input(feature_extractor.input_shape[1:])
         features = list(feature_extractor(images).values())
 
         fpn_features = apply_path_aggregation_fpn(
@@ -511,19 +516,25 @@ class YOLOV8Detector(Task):
         super().compile(loss=losses, **kwargs)
 
     def train_step(self, data):
-        x, y = unpack_input(data)
+        if keras_core_backend() in [None, "tensorflow"]:
+            import tensorflow as tf
 
-        with tf.GradientTape() as tape:
-            outputs = self(x, training=True)
-            box_pred, cls_pred = outputs["boxes"], outputs["classes"]
-            total_loss = self.compute_loss(x, y, box_pred, cls_pred)
+            x, y = unpack_input(data)
 
-        trainable_vars = self.trainable_variables
+            with tf.GradientTape() as tape:
+                print("X:", x.shape)
+                outputs = self(x, training=True)
+                box_pred, cls_pred = outputs["boxes"], outputs["classes"]
+                print(box_pred.shape, cls_pred.shape)
+                total_loss = self.compute_loss(x, y, box_pred, cls_pred)
 
-        gradients = tape.gradient(total_loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+            trainable_vars = self.trainable_variables
 
-        return super().compute_metrics(x, {}, {}, sample_weight={})
+            gradients = tape.gradient(total_loss, trainable_vars)
+            self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+
+            return super().compute_metrics(x, {}, {}, sample_weight={})
+        raise NotImplementedError
 
     def test_step(self, data):
         x, y = unpack_input(data)
@@ -539,11 +550,11 @@ class YOLOV8Detector(Task):
         pred_scores = cls_pred
 
         anchor_points, stride_tensor = get_anchors(image_shape=x.shape[1:])
-        stride_tensor = tf.expand_dims(stride_tensor, axis=-1)
+        stride_tensor = ops.expand_dims(stride_tensor, axis=-1)
 
         gt_labels = y["classes"]
 
-        mask_gt = tf.reduce_all(y["boxes"] > -1.0, axis=-1, keepdims=True)
+        mask_gt = ops.all(y["boxes"] > -1.0, axis=-1, keepdims=True)
         gt_bboxes = bounding_box.convert_format(
             y["boxes"],
             source=self.bounding_box_format,
@@ -555,7 +566,7 @@ class YOLOV8Detector(Task):
 
         target_bboxes, target_scores, fg_mask = self.label_encoder(
             pred_scores,
-            tf.cast(pred_bboxes * stride_tensor, gt_bboxes.dtype),
+            ops.cast(pred_bboxes * stride_tensor, gt_bboxes.dtype),
             anchor_points * stride_tensor,
             gt_labels,
             gt_bboxes,
@@ -563,9 +574,9 @@ class YOLOV8Detector(Task):
         )
 
         target_bboxes /= stride_tensor
-        target_scores_sum = tf.math.maximum(tf.reduce_sum(target_scores), 1)
-        box_weight = tf.expand_dims(
-            tf.boolean_mask(tf.reduce_sum(target_scores, axis=-1), fg_mask),
+        target_scores_sum = ops.maximum(ops.sum(target_scores), 1)
+        box_weight = ops.expand_dims(
+            ops.sum(target_scores, axis=-1)[fg_mask],
             axis=-1,
         )
 
@@ -597,7 +608,7 @@ class YOLOV8Detector(Task):
         boxes = decode_regression_to_boxes(boxes)
 
         anchor_points, stride_tensor = get_anchors(image_shape=images.shape[1:])
-        stride_tensor = tf.expand_dims(stride_tensor, axis=-1)
+        stride_tensor = ops.expand_dims(stride_tensor, axis=-1)
 
         box_preds = dist2bbox(boxes, anchor_points) * stride_tensor
         box_preds = bounding_box.convert_format(
