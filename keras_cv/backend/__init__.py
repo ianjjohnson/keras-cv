@@ -58,16 +58,11 @@ if multi_backend():
                 src_attr, dst_attr = attr, attr
             attr_val = getattr(src_mod, src_attr)
             setattr(dst_mod, dst_attr, attr_val)
-
-    keras_core_backend = keras.backend.backend
 else:
     from tensorflow import keras
 
     # TF Keras doesn't have this rename.
     keras.activations.silu = keras.activations.swish
-
-    # None => indicator that multi-backend is turned off.
-    keras_core_backend = lambda *a, **kw: None
 
 from keras_cv.backend import ops  # noqa: E402
 from keras_cv.backend import tf_ops  # noqa: E402

@@ -24,7 +24,7 @@ except ImportError:
     from keras.utils import tf_utils
 
 
-def make_predict_function_tensorflow(model, force=False):
+def make_predict_function(model, force=False):
     if model.predict_function is not None and not force:
         return model.predict_function
 
@@ -95,13 +95,3 @@ def make_predict_function_tensorflow(model, force=False):
     model.predict_function = predict_function
 
     return predict_function
-
-
-def make_predict_function_keras_core(model, force=False):
-    if model.predict_function is not None and not force:
-        return model.predict_function
-
-    pass
-
-
-make_predict_function = make_predict_function_tensorflow

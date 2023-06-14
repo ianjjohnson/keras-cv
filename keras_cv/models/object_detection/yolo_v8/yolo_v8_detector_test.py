@@ -166,7 +166,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             self.get_temp_dir(), "yolo_v8_xs_backbone.keras"
         )
         model.save(save_path)
-        restored_model = keras.models.load_model(save_path)
+        restored_model = keras.saving.load_model(save_path)
 
         # Check we got the real object back.
         self.assertIsInstance(restored_model, keras_cv.models.YOLOV8Detector)

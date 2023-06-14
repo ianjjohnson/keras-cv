@@ -19,14 +19,12 @@ from keras_cv import bounding_box
 
 # import tensorflow as tf
 from keras_cv.backend import keras
-from keras_cv.backend import keras_core_backend
 from keras_cv.backend import ops
 from keras_cv.losses.ciou_loss import CIoULoss
 from keras_cv.models.backbones.backbone_presets import backbone_presets
 from keras_cv.models.backbones.backbone_presets import (
     backbone_presets_with_weights,
 )
-from keras_cv.models.object_detection import predict_utils
 from keras_cv.models.object_detection.__internal__ import unpack_input
 from keras_cv.models.object_detection.yolo_v8.yolo_v8_detector_presets import (
     yolo_v8_detector_presets,
@@ -516,36 +514,16 @@ class YOLOV8Detector(Task):
         super().compile(loss=losses, **kwargs)
 
     def train_step(self, data):
-        if keras_core_backend() in [None, "tensorflow"]:
-            import tensorflow as tf
-
-            x, y = unpack_input(data)
-
-            with tf.GradientTape() as tape:
-                print("X:", x.shape)
-                outputs = self(x, training=True)
-                box_pred, cls_pred = outputs["boxes"], outputs["classes"]
-                print(box_pred.shape, cls_pred.shape)
-                total_loss = self.compute_loss(x, y, box_pred, cls_pred)
-
-            trainable_vars = self.trainable_variables
-
-            gradients = tape.gradient(total_loss, trainable_vars)
-            self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-            return super().compute_metrics(x, {}, {}, sample_weight={})
-        raise NotImplementedError
+        x, y = unpack_input(data)
+        return super().train_step((x, y))
 
     def test_step(self, data):
         x, y = unpack_input(data)
+        return super().test_step((x, y))
 
-        outputs = self(x, training=False)
-        box_pred, cls_pred = outputs["boxes"], outputs["classes"]
-        _ = self.compute_loss(x, y, box_pred, cls_pred)
+    def compute_loss(self, x, y, y_pred, sample_weight=None):
+        box_pred, cls_pred = y_pred["boxes"], y_pred["classes"]
 
-        return super().compute_metrics(x, {}, {}, sample_weight={})
-
-    def compute_loss(self, x, y, box_pred, cls_pred):
         pred_boxes = decode_regression_to_boxes(box_pred)
         pred_scores = cls_pred
 
@@ -620,8 +598,10 @@ class YOLOV8Detector(Task):
 
         return self.prediction_decoder(box_preds, scores)
 
-    def make_predict_function(self, force=False):
-        return predict_utils.make_predict_function(self, force=force)
+    def predict_step(self, data):
+        x, y = unpack_input(data)
+        outputs = super().predict_step((x, y))
+        return self.decode_predictions(outputs, data)
 
     @property
     def prediction_decoder(self):
