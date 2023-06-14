@@ -76,8 +76,8 @@ def get_anchors(
     all_anchors = []
     all_strides = []
     for stride in strides:
-        hh_centers = ops.arange(start=0, stop=image_shape[0], step=stride)
-        ww_centers = ops.arange(start=0, stop=image_shape[1], step=stride)
+        hh_centers = ops.arange(0, image_shape[0], stride)
+        ww_centers = ops.arange(0, image_shape[1], stride)
         ww_grid, hh_grid = ops.meshgrid(ww_centers, hh_centers)
         grid = ops.cast(
             ops.reshape(ops.stack([hh_grid, ww_grid], 2), [-1, 1, 2]),
@@ -599,8 +599,7 @@ class YOLOV8Detector(Task):
         return self.prediction_decoder(box_preds, scores)
 
     def predict_step(self, data):
-        x, y = unpack_input(data)
-        outputs = super().predict_step((x, y))
+        outputs = super().predict_step(data)
         return self.decode_predictions(outputs, data)
 
     @property

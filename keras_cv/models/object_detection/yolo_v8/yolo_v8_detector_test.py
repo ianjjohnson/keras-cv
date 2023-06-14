@@ -25,7 +25,7 @@ from keras_cv.models.backbones.test_backbone_presets import (
     test_backbone_presets,
 )
 from keras_cv.backend import keras
-from keras_cv.backend import keras_core_backend
+from keras_cv.backend.config import multi_backend
 from keras_cv.models.object_detection.__test_utils__ import (
     _create_bounding_box_dataset,
 )
@@ -65,8 +65,8 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
         yolo.fit(x=xs, y=ys, epochs=1)
 
     @pytest.mark.skipif(
-        keras_core_backend() is not None,
-        reason="RaggedTensors only work when multi-backend is turned off.",
+        multi_backend() and keras.backend.config.backend() != "tensorflow",
+        reason="Only TensorFlow supports raggeds",
     )
     @pytest.mark.large  # Fit is slow, so mark these large.
     def test_fit_with_ragged_tensors(self):

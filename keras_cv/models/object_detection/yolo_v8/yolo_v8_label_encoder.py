@@ -17,9 +17,9 @@ and is adapted from https://github.com/ultralytics/ultralytics/blob/main/ultraly
 
 import tensorflow as tf
 
+from keras_cv import bounding_box
 from keras_cv.backend import keras
 from keras_cv.backend import ops
-from keras_cv import bounding_box
 from keras_cv.bounding_box.iou import compute_ciou
 
 
@@ -40,7 +40,7 @@ def select_highest_overlaps(mask_pos, overlaps, max_num_boxes):
         max_overlaps_idx = ops.argmax(overlaps, axis=1)  # (b, num_anchors)
         is_max_overlaps = ops.one_hot(
             max_overlaps_idx,
-            ops.cast(max_num_boxes, dtype=ops.int32),  # tf.one_hot must use int32
+            ops.cast(max_num_boxes, dtype="int32"),  # tf.one_hot must use int32
         )  # (b, num_anchors, max_num_boxes)
         is_max_overlaps = ops.cast(
             ops.transpose(is_max_overlaps, axes=(0, 2, 1)), overlaps.dtype
@@ -174,7 +174,7 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
         if isinstance(mask_gt, tf.RaggedTensor):
             mask_gt = mask_gt.to_tensor()
 
-        max_num_boxes = ops.cast(ops.shape(gt_bboxes)[1], dtype=ops.int64)
+        max_num_boxes = ops.cast(ops.shape(gt_bboxes)[1], dtype="int64")
 
         def encode_to_targets(
             pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt
@@ -313,7 +313,7 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
             axis=1,
         )
         pd_scores = ops.where(ind_1[:, None, :] >= 0, pd_scores, 0.0)
-        pd_scores = ops.transpose(pd_scores, perm=(0, 2, 1))
+        pd_scores = ops.transpose(pd_scores, axes=(0, 2, 1))
 
         bbox_scores = ops.where(mask_gt, pd_scores, 0.0)
 
