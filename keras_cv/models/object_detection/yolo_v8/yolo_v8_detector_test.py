@@ -34,7 +34,6 @@ from keras_cv.models.object_detection.yolo_v8.yolo_v8_detector_presets import (
 )
 
 
-
 class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
     @pytest.mark.large  # Fit is slow, so mark these large.
     def test_fit(self):

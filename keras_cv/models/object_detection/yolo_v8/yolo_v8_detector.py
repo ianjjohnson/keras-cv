@@ -16,7 +16,6 @@ import warnings
 
 import keras_cv
 from keras_cv import bounding_box
-
 from keras_cv.backend import keras
 from keras_cv.backend import ops
 from keras_cv.backend.config import multi_backend
