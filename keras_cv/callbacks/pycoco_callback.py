@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-import tensorflow as tf
 from keras.callbacks import Callback
 
 from keras_cv import bounding_box
@@ -61,14 +60,12 @@ class PyCOCOCallback(Callback):
                 images, boxes = unpack_input(data)
             else:
                 images = data
-                boxes = maybe_boxes
             return images
 
         def boxes_only(data, maybe_boxes=None):
             if maybe_boxes is None:
                 images, boxes = unpack_input(data)
             else:
-                images = data
                 boxes = maybe_boxes
             return boxes
 
@@ -80,7 +77,6 @@ class PyCOCOCallback(Callback):
         valid_det = ops.convert_to_numpy(y_pred["num_detections"])
 
         gt = [boxes for boxes in self.val_data.map(boxes_only)]
-        print(gt)
         gt_boxes = ops.concatenate(
             [ops.convert_to_numpy(boxes["boxes"]) for boxes in gt],
             axis=0,

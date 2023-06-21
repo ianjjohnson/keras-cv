@@ -15,8 +15,6 @@ import copy
 
 import numpy as np
 
-from keras_cv.backend import keras
-
 try:
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
