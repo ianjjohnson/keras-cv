@@ -40,7 +40,7 @@ def select_highest_overlaps(mask_pos, overlaps, max_num_boxes):
         max_overlaps_idx = ops.argmax(overlaps, axis=1)  # (b, num_anchors)
         is_max_overlaps = ops.one_hot(
             max_overlaps_idx,
-            ops.cast(max_num_boxes, dtype="int32"),  # tf.one_hot must use int32
+            max_num_boxes,  # tf.one_hot must use int32
         )  # (b, num_anchors, max_num_boxes)
         is_max_overlaps = ops.cast(
             ops.transpose(is_max_overlaps, axes=(0, 2, 1)), overlaps.dtype
@@ -72,7 +72,7 @@ def select_candidates_in_gts(xy_centers, gt_bboxes, epsilon=1e-9):
         and `False` otherwise.
     """
     n_anchors = xy_centers.shape[0]
-    n_boxes = tf.shape(gt_bboxes)[1]
+    n_boxes = ops.shape(gt_bboxes)[1]
 
     left_top, right_bottom = ops.split(
         ops.reshape(gt_bboxes, (-1, 1, 4)), 2, axis=-1
@@ -88,7 +88,7 @@ def select_candidates_in_gts(xy_centers, gt_bboxes, epsilon=1e-9):
         (-1, n_boxes, n_anchors, 4),
     )
 
-    return ops.min(bbox_deltas, axis=-1) > epsilon
+    return ops.min(bbox_deltas, axis=-1, initial=float("inf")) > epsilon
 
 
 @keras.utils.register_keras_serializable(package="keras_cv")
@@ -174,7 +174,7 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
         if isinstance(mask_gt, tf.RaggedTensor):
             mask_gt = mask_gt.to_tensor()
 
-        max_num_boxes = ops.cast(ops.shape(gt_bboxes)[1], dtype="int64")
+        max_num_boxes = ops.shape(gt_bboxes)[1]
 
         def encode_to_targets(
             pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt
@@ -382,12 +382,18 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
                     representing target classes for each anchor.
         """
 
+        # The hack `ops.cumsum(ops.ones_like(...))` is equivalent to doing
+        # `ops.arange`. We need this because tfnp doesn't support symbolic
+        # tensors as inputs to `arange`.
+        # batch_ind = ops.cumsum(ops.ones_like(target_gt_idx), axis=0) - 1
         batch_ind = ops.arange(ops.shape(gt_labels)[0], dtype="int64")[
             ..., None
         ]
-        target_gt_idx = target_gt_idx + batch_ind * max_num_boxes
+        target_gt_idx = target_gt_idx + batch_ind * ops.cast(
+            max_num_boxes, "int64"
+        )
 
-        gt_bboxes = ops.reshape(gt_bboxes, (-1, ops.shape(gt_bboxes)[1], 4))
+        gt_bboxes = keras.layers.Reshape((-1, 4))(gt_bboxes)
 
         target_labels = ops.take(
             ops.reshape(ops.cast(gt_labels, "int64"), (-1,)), target_gt_idx

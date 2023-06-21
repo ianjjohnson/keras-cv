@@ -33,18 +33,15 @@ from keras_cv.models.object_detection.yolo_v8.yolo_v8_detector_presets import (
     yolo_v8_detector_presets,
 )
 
-try:
+if multi_backend():
     keras.utils.traceback_utils.disable_traceback_filtering()
-except Exception:
+else:
     tf.debugging.disable_traceback_filtering()
 
 
 class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
     @pytest.mark.large  # Fit is slow, so mark these large.
     def test_fit(self):
-        import tensorflow as tf
-
-        tf.debugging.disable_traceback_filtering()
         bounding_box_format = "xywh"
         yolo = keras_cv.models.YOLOV8Detector(
             num_classes=2,
@@ -59,13 +56,14 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
+            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
 
         yolo.fit(x=xs, y=ys, epochs=1)
 
     @pytest.mark.skipif(
-        multi_backend() and keras.backend.config.backend() != "tensorflow",
+        multi_backend(),
         reason="Only TensorFlow supports raggeds",
     )
     @pytest.mark.large  # Fit is slow, so mark these large.
@@ -84,6 +82,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
+            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
         ys = bounding_box.to_ragged(ys)
@@ -106,11 +105,11 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
+            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
         # Make all bounding_boxes invalid and filter out them
         ys["classes"] = -tf.ones_like(ys["classes"])
-        ys = bounding_box.to_ragged(ys)
 
         yolo.fit(x=xs, y=ys, epochs=1)
 
@@ -163,10 +162,13 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
         xs, _ = _create_bounding_box_dataset("xywh")
         model_output = model(xs)
         save_path = os.path.join(
-            self.get_temp_dir(), "yolo_v8_xs_backbone.keras"
+            self.get_temp_dir(), "yolo_v8_xs_detector.keras"
         )
         model.save(save_path)
-        restored_model = keras.saving.load_model(save_path)
+        restored_model = keras.saving.load_model(
+            save_path,
+            custom_objects={"YOLOV8Detector": keras_cv.models.YOLOV8Detector},
+        )
 
         # Check we got the real object back.
         self.assertIsInstance(restored_model, keras_cv.models.YOLOV8Detector)
@@ -183,7 +185,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             backbone=keras_cv.models.YOLOV8Backbone.from_preset(
                 "yolo_v8_s_backbone"
             ),
-            prediction_decoder=keras_cv.layers.MultiClassNonMaxSuppression(
+            prediction_decoder=keras_cv.layers.NonMaxSuppression(
                 bounding_box_format="xywh",
                 from_logits=False,
                 confidence_threshold=0.0,
@@ -193,11 +195,25 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
 
         image = np.ones((1, 512, 512, 3))
 
+        # Call compile to turn off jit compile.
+        # This should not be required if the user just wants to call the
+        # predict function. Is there a way to turn off jit when calling
+        # the predict function without having to invoke `.compile()`?
+        yolo.compile(
+            optimizer="adam",
+            classification_loss="binary_crossentropy",
+            box_loss="ciou",
+            jit_compile=False,
+        )
+
         outputs = yolo.predict(image)
         # We predicted at least 1 box with confidence_threshold 0
-        self.assertGreater(outputs["boxes"]._values.shape[0], 0)
+        if multi_backend():
+            self.assertGreater(outputs["boxes"].shape[0], 0)
+        else:
+            self.assertGreater(outputs["boxes"]._values.shape[0], 0)
 
-        yolo.prediction_decoder = keras_cv.layers.MultiClassNonMaxSuppression(
+        yolo.prediction_decoder = keras_cv.layers.NonMaxSuppression(
             bounding_box_format="xywh",
             from_logits=False,
             confidence_threshold=1.0,
@@ -206,7 +222,18 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
 
         outputs = yolo.predict(image)
         # We predicted no boxes with confidence threshold 1
-        self.assertEqual(outputs["boxes"]._values.shape[0], 0)
+        if multi_backend():
+            self.assertAllEqual(
+                outputs["boxes"], -np.ones_like(outputs["boxes"])
+            )
+            self.assertAllEqual(
+                outputs["confidence"], -np.ones_like(outputs["confidence"])
+            )
+            self.assertAllEqual(
+                outputs["classes"], -np.ones_like(outputs["classes"])
+            )
+        else:
+            self.assertEqual(outputs["boxes"]._values.shape[0], 0)
 
 
 @pytest.mark.large

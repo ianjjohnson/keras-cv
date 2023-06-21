@@ -20,6 +20,7 @@ from keras_cv import bounding_box
 # import tensorflow as tf
 from keras_cv.backend import keras
 from keras_cv.backend import ops
+from keras_cv.backend.config import multi_backend
 from keras_cv.losses.ciou_loss import CIoULoss
 from keras_cv.models.backbones.backbone_presets import backbone_presets
 from keras_cv.models.backbones.backbone_presets import (
@@ -83,7 +84,12 @@ def get_anchors(
             ops.reshape(ops.stack([hh_grid, ww_grid], 2), [-1, 1, 2]),
             "float32",
         )
-        anchors = ops.expand_dims(base_anchors * [stride, stride], 0) + grid
+        anchors = (
+            ops.expand_dims(
+                base_anchors * ops.array([stride, stride], "float32"), 0
+            )
+            + grid
+        )
         anchors = ops.reshape(anchors, [-1, 2])
         all_anchors.append(anchors)
         all_strides.append(ops.repeat(stride, anchors.shape[0]))
@@ -120,7 +126,7 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     p3, p4, p5 = features
 
     # Upsample P5 and concatenate with P4, then apply a CSPBlock.
-    p5_upsampled = ops.image.resize(p5, ops.shape(p4)[1:-1], method="nearest")
+    p5_upsampled = ops.repeat(ops.repeat(p5, 2, axis=1), 2, axis=2)
     p4p5 = ops.concatenate([p5_upsampled, p4], axis=-1)
     p4p5 = apply_csp_block(
         p4p5,
@@ -132,9 +138,7 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     )
 
     # Upsample P4P5 and concatenate with P3, then apply a CSPBlock.
-    p4p5_upsampled = ops.image.resize(
-        p4p5, ops.shape(p3)[1:-1], method="nearest"
-    )
+    p4p5_upsampled = ops.repeat(ops.repeat(p4p5, 2, axis=1), 2, axis=2)
     p3p4p5 = ops.concatenate([p4p5_upsampled, p3], axis=-1)
     p3p4p5 = apply_csp_block(
         p3p4p5,
@@ -296,8 +300,8 @@ def decode_regression_to_boxes(preds):
     predictions are relative to the stride of an anchor box (and correspondingly
     relative to the scale of the feature map from which the predictions came).
     """
-    preds_bbox = ops.reshape(
-        preds, (-1, preds.shape[1], 4, BOX_REGRESSION_CHANNELS // 4)
+    preds_bbox = keras.layers.Reshape((-1, 4, BOX_REGRESSION_CHANNELS // 4))(
+        preds
     )
     preds_bbox = ops.nn.softmax(preds_bbox, axis=-1) * ops.arange(
         BOX_REGRESSION_CHANNELS // 4, dtype="float32"
@@ -430,7 +434,7 @@ class YOLOV8Detector(Task):
         self.bounding_box_format = bounding_box_format
         self._prediction_decoder = (
             prediction_decoder
-            or keras_cv.layers.MultiClassNonMaxSuppression(
+            or keras_cv.layers.NonMaxSuppression(
                 bounding_box_format=bounding_box_format,
                 from_logits=False,
                 confidence_threshold=0.2,
@@ -443,6 +447,13 @@ class YOLOV8Detector(Task):
         self.label_encoder = label_encoder or YOLOV8LabelEncoder(
             num_classes=num_classes
         )
+
+        if multi_backend() and keras.backend.config.backend() == "jax":
+            self.train_step = self._jax_train_step
+            self.predict_step = self._jax_predict_step
+        else:
+            self.train_step = self._tf_train_step
+            self.predict_step = self._tf_predict_step
 
     def compile(
         self,
@@ -513,9 +524,13 @@ class YOLOV8Detector(Task):
 
         super().compile(loss=losses, **kwargs)
 
-    def train_step(self, data):
+    def _tf_train_step(self, data):
         x, y = unpack_input(data)
         return super().train_step((x, y))
+
+    def _jax_train_step(self, state, data):
+        x, y = unpack_input(data)
+        return super().train_step(state, (x, y))
 
     def test_step(self, data):
         x, y = unpack_input(data)
@@ -598,8 +613,12 @@ class YOLOV8Detector(Task):
 
         return self.prediction_decoder(box_preds, scores)
 
-    def predict_step(self, data):
+    def _tf_predict_step(self, data):
         outputs = super().predict_step(data)
+        return self.decode_predictions(outputs, data)
+
+    def _jax_predict_step(self, state, data):
+        outputs = super().predict_step(state, data)
         return self.decode_predictions(outputs, data)
 
     @property
