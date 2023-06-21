@@ -566,16 +566,16 @@ class YOLOV8Detector(Task):
         target_bboxes /= stride_tensor
         target_scores_sum = ops.maximum(ops.sum(target_scores), 1)
         box_weight = ops.expand_dims(
-            ops.sum(target_scores, axis=-1)[fg_mask],
+            ops.sum(target_scores, axis=-1) * fg_mask,
             axis=-1,
         )
 
         y_true = {
-            "box": target_bboxes[fg_mask],
+            "box": target_bboxes * fg_mask[..., None],
             "class": target_scores,
         }
         y_pred = {
-            "box": pred_bboxes[fg_mask],
+            "box": pred_bboxes * fg_mask[..., None],
             "class": pred_scores,
         }
         sample_weights = {

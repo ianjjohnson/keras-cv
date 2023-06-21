@@ -219,7 +219,7 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
             return (
                 ops.stop_gradient(target_bboxes),
                 ops.stop_gradient(target_scores),
-                ops.stop_gradient(ops.cast(fg_mask, "bool")),
+                ops.stop_gradient(fg_mask),
             )
 
         # return zeros if no gt boxes are present
@@ -231,7 +231,7 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
             lambda: (
                 ops.zeros_like(pd_bboxes),
                 ops.zeros_like(pd_scores),
-                ops.zeros_like(pd_scores[..., 0], dtype="bool"),
+                ops.zeros_like(pd_scores[..., 0]),
             ),
         )
 

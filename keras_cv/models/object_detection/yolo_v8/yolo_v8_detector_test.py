@@ -51,7 +51,6 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
-            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
 
@@ -77,7 +76,6 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
-            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
         ys = bounding_box.to_ragged(ys)
@@ -100,7 +98,6 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             optimizer="adam",
             classification_loss="binary_crossentropy",
             box_loss="ciou",
-            jit_compile=False,
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
         # Make all bounding_boxes invalid and filter out them
@@ -189,17 +186,6 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
         )
 
         image = np.ones((1, 512, 512, 3))
-
-        # Call compile to turn off jit compile.
-        # This should not be required if the user just wants to call the
-        # predict function. Is there a way to turn off jit when calling
-        # the predict function without having to invoke `.compile()`?
-        yolo.compile(
-            optimizer="adam",
-            classification_loss="binary_crossentropy",
-            box_loss="ciou",
-            jit_compile=False,
-        )
 
         outputs = yolo.predict(image)
         # We predicted at least 1 box with confidence_threshold 0
