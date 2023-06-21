@@ -203,10 +203,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
 
         outputs = yolo.predict(image)
         # We predicted at least 1 box with confidence_threshold 0
-        if multi_backend():
-            self.assertGreater(outputs["boxes"].shape[0], 0)
-        else:
-            self.assertGreater(outputs["boxes"]._values.shape[0], 0)
+        self.assertGreater(outputs["boxes"].shape[0], 0)
 
         yolo.prediction_decoder = keras_cv.layers.NonMaxSuppression(
             bounding_box_format="xywh",
@@ -217,18 +214,13 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
 
         outputs = yolo.predict(image)
         # We predicted no boxes with confidence threshold 1
-        if multi_backend():
-            self.assertAllEqual(
-                outputs["boxes"], -np.ones_like(outputs["boxes"])
-            )
-            self.assertAllEqual(
-                outputs["confidence"], -np.ones_like(outputs["confidence"])
-            )
-            self.assertAllEqual(
-                outputs["classes"], -np.ones_like(outputs["classes"])
-            )
-        else:
-            self.assertEqual(outputs["boxes"]._values.shape[0], 0)
+        self.assertAllEqual(outputs["boxes"], -np.ones_like(outputs["boxes"]))
+        self.assertAllEqual(
+            outputs["confidence"], -np.ones_like(outputs["confidence"])
+        )
+        self.assertAllEqual(
+            outputs["classes"], -np.ones_like(outputs["classes"])
+        )
 
 
 @pytest.mark.large
