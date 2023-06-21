@@ -382,10 +382,6 @@ class YOLOV8LabelEncoder(keras.layers.Layer):
                     representing target classes for each anchor.
         """
 
-        # The hack `ops.cumsum(ops.ones_like(...))` is equivalent to doing
-        # `ops.arange`. We need this because tfnp doesn't support symbolic
-        # tensors as inputs to `arange`.
-        # batch_ind = ops.cumsum(ops.ones_like(target_gt_idx), axis=0) - 1
         batch_ind = ops.arange(ops.shape(gt_labels)[0], dtype="int64")[
             ..., None
         ]

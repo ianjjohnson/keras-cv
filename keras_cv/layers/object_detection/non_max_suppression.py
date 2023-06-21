@@ -514,10 +514,6 @@ def _suppression_loop_body(boxes, iou_threshold, output_size, idx, tile_size):
         )
 
         # Uses box_slice to update the input boxes.
-        # The hack `ops.cumsum(ops.ones(...))` is equivalent to doing
-        # `ops.arange`. We need this because tfnp doesn't support symbolic
-        # tensors as inputs to `arange`.
-        # mask = ops.cumsum(ops.ones(num_tiles)) - 1
         mask = ops.reshape(
             ops.cast(ops.equal(ops.arange(num_tiles), idx), boxes.dtype),
             [1, -1, 1, 1],

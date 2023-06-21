@@ -33,10 +33,6 @@ from keras_cv.models.object_detection.yolo_v8.yolo_v8_detector_presets import (
     yolo_v8_detector_presets,
 )
 
-if multi_backend():
-    keras.utils.traceback_utils.disable_traceback_filtering()
-else:
-    tf.debugging.disable_traceback_filtering()
 
 
 class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):

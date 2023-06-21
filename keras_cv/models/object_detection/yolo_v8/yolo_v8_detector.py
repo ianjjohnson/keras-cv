@@ -17,7 +17,6 @@ import warnings
 import keras_cv
 from keras_cv import bounding_box
 
-# import tensorflow as tf
 from keras_cv.backend import keras
 from keras_cv.backend import ops
 from keras_cv.backend.config import multi_backend
@@ -189,7 +188,6 @@ def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     return [p3p4p5, p3p4p5_d1, p3p4p5_d2]
 
 
-# TODO: uses conv_bn, csp  ==> convert_to_layer
 def apply_yolo_v8_head(
     inputs,
     num_classes,
