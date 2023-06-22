@@ -104,7 +104,6 @@ def get_anchors(
     return all_anchors, all_strides
 
 
-# TODO: uses conv_bn, csp  => convert to layer
 def apply_path_aggregation_fpn(features, depth=3, name="fpn"):
     """Applies the Feature Pyramid Network (FPN) to the outputs of a backbone.
 

@@ -157,6 +157,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
             self.get_temp_dir(), "yolo_v8_xs_detector.keras"
         )
         model.save(save_path)
+        # TODO: Remove the need to pass the `custom_objects` parameter.
         restored_model = keras.saving.load_model(
             save_path,
             custom_objects={"YOLOV8Detector": keras_cv.models.YOLOV8Detector},
