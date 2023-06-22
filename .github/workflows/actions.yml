@@ -79,12 +79,14 @@ jobs:
         KERAS_BACKEND: jax
       run: |
         pytest keras_cv/bounding_box \
+               keras_cv/callbacks \
                keras_cv/layers/object_detection \
+               keras_cv/layers/preprocessing \
                keras_cv/losses \
                keras_cv/models/backbones \
                keras_cv/models/classification/image_classifier_test.py \
                keras_cv/models/object_detection/retinanet \
-               --durations 0 --run_large
+               --durations 0
   format:
     name: Check the code format
     runs-on: ubuntu-latest

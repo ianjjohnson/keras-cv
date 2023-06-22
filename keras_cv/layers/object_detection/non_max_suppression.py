@@ -519,7 +519,7 @@ def _suppression_loop_body(boxes, iou_threshold, output_size, idx, tile_size):
             [1, -1, 1, 1],
         )
         boxes = ops.tile(
-            ops.expand_dims(box_slice, [1]), [1, num_tiles, 1, 1]
+            ops.expand_dims(box_slice, 1), [1, num_tiles, 1, 1]
         ) * mask + ops.reshape(boxes, [batch_size, num_tiles, tile_size, 4]) * (
             1 - mask
         )
