@@ -26,3 +26,5 @@ from tensorflow import split  # noqa: F403, F401
 from tensorflow.keras.preprocessing.image import (  # noqa: F403, F401
     smart_resize,
 )
+
+convert_to_numpy = lambda x: x.numpy() if is_tensor(x) else x  # noqa: F405
