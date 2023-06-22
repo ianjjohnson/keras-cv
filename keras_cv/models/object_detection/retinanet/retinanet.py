@@ -218,7 +218,9 @@ class RetinaNet(Task):
         self.anchor_generator = label_encoder.anchor_generator
         self.bounding_box_format = bounding_box_format
         self.num_classes = num_classes
-        self.backbone = backbone
+        # TODO(ianstenbit): Make self.backbone = backbone work for PyTorch
+        # See https://stackoverflow.com/questions/61116433/maybe-i-found-something-strange-on-pytorch-which-result-in-property-setter-not  # noqa: E501
+        self._backbone = backbone
 
         self.feature_extractor = feature_extractor
         self._prediction_decoder = (
@@ -410,11 +412,15 @@ class RetinaNet(Task):
                 "parameter?"
             )
 
+        # Torch one_hot doesn't support negative inputs, so we get rid of
+        # them using max. The output will have some invalid results, so we
+        # set them back to 0 using ops.where afterwards
         cls_labels = ops.one_hot(
-            ops.cast(classes, dtype="int32"),
+            ops.maximum(ops.cast(classes, dtype="int32"), 0),
             self.num_classes,
             dtype="float32",
         )
+        cls_labels = ops.where(ops.any(classes > 0), cls_labels, 0)
 
         positive_mask = ops.cast(ops.greater(classes, -1.0), dtype="float32")
         normalizer = ops.sum(positive_mask)
