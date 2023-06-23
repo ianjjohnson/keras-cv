@@ -80,10 +80,9 @@ class FocalLoss(keras.losses.Loss):
         if self.label_smoothing:
             y_true = self._smooth_labels(y_true)
 
-        if self.from_logits:
-            y_pred = ops.sigmoid(y_pred)
-
-        cross_entropy = ops.binary_crossentropy(y_true, y_pred)
+        cross_entropy = ops.binary_crossentropy(
+            y_true, y_pred, from_logits=self.from_logits
+        )
 
         alpha = ops.where(
             ops.equal(y_true, 1.0), self.alpha, (1.0 - self.alpha)

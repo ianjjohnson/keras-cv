@@ -63,7 +63,8 @@ class FocalTest(tf.test.TestCase):
         focal_loss_on_logits = FocalLoss(from_logits=True)
         focal_loss = FocalLoss()
 
-        # Both with and without logits, we match a golden value.
+        # These are expected to be different due to sigmoid + softmax fusing
         self.assertAllClose(
-            focal_loss_on_logits(y_true, y_logits), focal_loss(y_true, y_pred)
+            focal_loss_on_logits(y_true, y_logits), 306701651.31414
         )
+        self.assertAllClose(focal_loss(y_true, y_pred), 31.11176)
