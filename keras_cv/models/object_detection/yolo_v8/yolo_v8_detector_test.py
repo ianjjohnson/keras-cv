@@ -25,6 +25,7 @@ from keras_cv.models.backbones.test_backbone_presets import (
     test_backbone_presets,
 )
 from keras_cv.backend import keras
+from keras_cv.backend import ops
 from keras_cv.backend.config import multi_backend
 from keras_cv.models.object_detection.__test_utils__ import (
     _create_bounding_box_dataset,
@@ -32,6 +33,11 @@ from keras_cv.models.object_detection.__test_utils__ import (
 from keras_cv.models.object_detection.yolo_v8.yolo_v8_detector_presets import (
     yolo_v8_detector_presets,
 )
+
+if multi_backend():
+    keras.utils.traceback_utils.disable_traceback_filtering()
+else:
+    tf.debugging.disable_traceback_filtering()
 
 
 class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
@@ -101,7 +107,7 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
         )
         xs, ys = _create_bounding_box_dataset(bounding_box_format)
         # Make all bounding_boxes invalid and filter out them
-        ys["classes"] = -tf.ones_like(ys["classes"])
+        ys["classes"] = -ops.ones_like(ys["classes"])
 
         yolo.fit(x=xs, y=ys, epochs=1)
 
@@ -168,7 +174,14 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
 
         # Check that output matches.
         restored_output = restored_model(xs)
-        self.assertAllClose(model_output, restored_output)
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output["boxes"]),
+            ops.convert_to_numpy(restored_output["boxes"]),
+        )
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output["classes"]),
+            ops.convert_to_numpy(restored_output["classes"]),
+        )
 
     def test_update_prediction_decoder(self):
         yolo = keras_cv.models.YOLOV8Detector(
@@ -238,11 +251,11 @@ class YOLOV8DetectorSmokeTest(tf.test.TestCase, parameterized.TestCase):
         encoded_predictions = model(image)
 
         self.assertAllClose(
-            encoded_predictions["boxes"][0, 0:5, 0],
+            ops.convert_to_numpy(encoded_predictions["boxes"][0, 0:5, 0]),
             [-0.8303556, 0.75213313, 1.809204, 1.6576759, 1.4134747],
         )
         self.assertAllClose(
-            encoded_predictions["classes"][0, 0:5, 0],
+            ops.convert_to_numpy(encoded_predictions["classes"][0, 0:5, 0]),
             [
                 7.6146556e-08,
                 8.0103280e-07,
