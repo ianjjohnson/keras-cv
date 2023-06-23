@@ -109,6 +109,7 @@ class RandomApply(BaseImageAugmentationLayer):
         self.auto_vectorize = auto_vectorize
         self.batchwise = batchwise
         self.seed = seed
+        self.built = True
 
     def _should_augment(self):
         return (
@@ -143,6 +144,3 @@ class RandomApply(BaseImageAugmentationLayer):
             }
         )
         return config
-
-    def build(self, input_shape):
-        self._layer.build(input_shape)
