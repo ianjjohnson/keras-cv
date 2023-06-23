@@ -56,9 +56,11 @@ class FocalTest(tf.test.TestCase):
 
     def test_from_logits_argument(self):
         rng = np.random.default_rng(1337)
-        y_true = rng.uniform(size=(2, 8, 10))
-        y_logits = rng.uniform(low=-1000, high=1000, size=(2, 8, 10))
-        y_pred = ops.sigmoid(y_logits)
+        y_true = rng.uniform(size=(2, 8, 10)).astype("float64")
+        y_logits = rng.uniform(low=-1000, high=1000, size=(2, 8, 10)).astype(
+            "float64"
+        )
+        y_pred = ops.cast(ops.sigmoid(y_logits), "float32")
 
         focal_loss_on_logits = FocalLoss(from_logits=True)
         focal_loss = FocalLoss()
