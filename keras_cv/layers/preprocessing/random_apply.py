@@ -143,3 +143,6 @@ class RandomApply(BaseImageAugmentationLayer):
             }
         )
         return config
+
+    def build(self, input_shape):
+        self._layer.build(input_shape)

@@ -255,7 +255,7 @@ class VectorizedBaseImageAugmentationLayerTest(tf.test.TestCase):
     def test_augment_leaves_extra_dict_entries_unmodified(self):
         add_layer = VectorizedRandomAddLayer(fixed_value=0.5)
         images = np.random.random(size=(8, 8, 3)).astype("float32")
-        timestamps = tf.constant(123123123, tf.float32)
+        timestamps = np.array(123123123)
         inputs = {"images": images, "timestamps": timestamps}
         output = add_layer(inputs)
         self.assertAllEqual(output["timestamps"], timestamps)
@@ -485,19 +485,19 @@ class VectorizedBaseImageAugmentationLayerTest(tf.test.TestCase):
     def test_augment_all_data_with_ragged_images_for_assertion(self):
         images = tf.ragged.stack(
             [
-                np.random.random(size=(8, 8, 3)).astype("float32"),
-                np.random.random(size=(16, 8, 3)).astype("float32"),
+                tf.random.uniform(shape=(8, 8, 3)),
+                tf.random.uniform(shape=(16, 8, 3)),
             ]
         )
-        labels = np.squeeze(np.eye(10)[np.array([0, 1]).reshape(-1)])
-        bounding_boxes = {
-            "boxes": np.random.random(size=(2, 3, 4)).astype("float32"),
-            "classes": np.random.random(size=(2, 3)).astype("float32"),
-        }
-        keypoints = np.random.random(size=(2, 5, 2)).astype("float32")
-        segmentation_masks = np.random.random(size=(2, 8, 8, 1)).astype(
-            "float32"
+        labels = tf.constant(
+            np.squeeze(np.eye(10)[np.array([0, 1]).reshape(-1)])
         )
+        bounding_boxes = {
+            "boxes": tf.random.uniform(shape=(2, 3, 4)),
+            "classes": tf.random.uniform(shape=(2, 3)),
+        }
+        keypoints = tf.random.uniform(shape=(2, 5, 2))
+        segmentation_masks = tf.random.uniform(shape=(2, 8, 8, 1))
         assertion_layer = VectorizedAssertionLayer()
 
         print(
