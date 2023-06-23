@@ -14,9 +14,21 @@
 from keras_cv.backend.config import multi_backend
 
 if multi_backend():
+    import keras_core  # noqa: F403, F401
     from keras_core.backend import convert_to_numpy  # noqa: F403, F401
     from keras_core.backend import vectorized_map  # noqa: F403, F401
     from keras_core.ops import *  # noqa: F403, F401
+    from keras_core.ops import arange as keras_core_arange  # noqa
     from keras_core.utils.image_utils import smart_resize  # noqa: F403, F401
+
+    def arange(start, stop=None, step=1, dtype=None):
+        if keras_core.backend.backend() == "tensorflow":
+            # tfnp doesn't allow start, stop, and step to be symbolic
+            # tensors. So, directly call `tf.range` instead.
+            import tensorflow as tf  # noqa: F403, F401
+
+            return tf.range(start, stop, step, dtype=dtype)
+        return keras_core_arange(start, stop, step, dtype=dtype)
+
 else:
     from keras_cv.backend.tf_ops import *  # noqa: F403, F401
