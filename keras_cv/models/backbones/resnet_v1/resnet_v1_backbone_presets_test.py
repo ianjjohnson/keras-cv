@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
+from keras_cv.backend import ops
 from keras_cv.models.backbones.resnet_v1.resnet_v1_aliases import (
     ResNet50Backbone,
 )
@@ -53,7 +54,10 @@ class ResNetPresetSmokeTest(tf.test.TestCase):
         expected = [0.0, 0.0, 0.0, 0.05175382, 0.0]
         # Keep a high tolerance, so we are robust to different hardware.
         self.assertAllClose(
-            outputs[0, 0, 0, :5], expected, atol=0.01, rtol=0.01
+            ops.convert_to_numpy(outputs[0, 0, 0, :5]),
+            expected,
+            atol=0.01,
+            rtol=0.01,
         )
 
     def test_applications_model_output(self):

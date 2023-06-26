@@ -22,6 +22,7 @@ import tensorflow as tf
 from absl.testing import parameterized
 
 from keras_cv.backend import keras
+from keras_cv.backend import ops
 from keras_cv.models.backbones.resnet_v2.resnet_v2_aliases import (
     ResNet18V2Backbone,
 )
@@ -94,7 +95,10 @@ class ImageClassifierTest(tf.test.TestCase, parameterized.TestCase):
 
         # Check that output matches.
         restored_output = restored_model(self.input_batch)
-        self.assertAllClose(model_output, restored_output)
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output),
+            ops.convert_to_numpy(restored_output),
+        )
 
 
 @pytest.mark.large
@@ -128,7 +132,9 @@ class ImageClassifierPresetSmokeTest(tf.test.TestCase, parameterized.TestCase):
         outputs = model.backbone(self.input_batch)
         outputs = outputs[0, 0, 0, :5]
         # Keep a high tolerance, so we are robust to different hardware.
-        self.assertAllClose(outputs, expected, atol=0.01, rtol=0.01)
+        self.assertAllClose(
+            ops.convert_to_numpy(outputs), expected, atol=0.01, rtol=0.01
+        )
 
     @parameterized.named_parameters(
         ("preset_with_weights", "resnet50_v2_imagenet"),
@@ -162,7 +168,9 @@ class ImageClassifierPresetSmokeTest(tf.test.TestCase, parameterized.TestCase):
         outputs = outputs[0, 0, 0, :5]
         expected = [1.051145, 0, 0, 1.16328, 0]
         # Keep a high tolerance, so we are robust to different hardware.
-        self.assertAllClose(outputs, expected, atol=0.01, rtol=0.01)
+        self.assertAllClose(
+            ops.convert_to_numpy(outputs), expected, atol=0.01, rtol=0.01
+        )
 
     def test_classifier_preset_call(self):
         model = ImageClassifier.from_preset("resnet50_v2_imagenet_classifier")
@@ -181,7 +189,9 @@ class ImageClassifierPresetSmokeTest(tf.test.TestCase, parameterized.TestCase):
             3.414580e-04,
         ]
         # Keep a high tolerance, so we are robust to different hardware.
-        self.assertAllClose(outputs, expected, atol=0.01, rtol=0.01)
+        self.assertAllClose(
+            ops.convert_to_numpy(outputs), expected, atol=0.01, rtol=0.01
+        )
 
 
 if __name__ == "__main__":

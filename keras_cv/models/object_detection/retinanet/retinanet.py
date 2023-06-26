@@ -182,7 +182,9 @@ class RetinaNet(Task):
         )
 
         # Begin construction of forward pass
-        images = keras.layers.Input(feature_extractor.input_shape[1:])
+        images = keras.layers.Input(
+            feature_extractor.input_shape[1:], name="images"
+        )
 
         backbone_outputs = feature_extractor(images)
         features = feature_pyramid(backbone_outputs)
@@ -206,7 +208,7 @@ class RetinaNet(Task):
         # box_pred is always in "center_yxhw" delta-encoded no matter what
         # format you pass in.
 
-        inputs = images
+        inputs = {"images": images}
         outputs = {"box": box_pred, "classification": cls_pred}
 
         super().__init__(

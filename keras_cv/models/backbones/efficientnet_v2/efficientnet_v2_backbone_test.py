@@ -20,6 +20,7 @@ import tensorflow as tf
 from absl.testing import parameterized
 
 from keras_cv.backend import keras
+from keras_cv.backend import ops
 from keras_cv.models.backbones.efficientnet_v2.efficientnet_v2_aliases import (
     EfficientNetV2SBackbone,
 )
@@ -117,7 +118,10 @@ class EfficientNetV2BackboneTest(tf.test.TestCase, parameterized.TestCase):
 
         # Check that output matches.
         restored_output = restored_model(self.input_batch)
-        self.assertAllClose(model_output, restored_output)
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output),
+            ops.convert_to_numpy(restored_output),
+        )
 
     @pytest.mark.large  # Saving is slow, so mark these large.
     def test_saved_alias_model(self):
@@ -135,7 +139,10 @@ class EfficientNetV2BackboneTest(tf.test.TestCase, parameterized.TestCase):
 
         # Check that output matches.
         restored_output = restored_model(self.input_batch)
-        self.assertAllClose(model_output, restored_output)
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output),
+            ops.convert_to_numpy(restored_output),
+        )
 
     def test_feature_pyramid_inputs(self):
         model = EfficientNetV2SBackbone()
