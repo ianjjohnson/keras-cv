@@ -17,6 +17,8 @@ try:
     # When using torch and tensorflow, torch needs to be imported first,
     # otherwise it will segfault upon import.
     import torch
+
+    del torch
 except ImportError:
     pass
 

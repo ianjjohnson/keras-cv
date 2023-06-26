@@ -218,9 +218,7 @@ class RetinaNet(Task):
         self.anchor_generator = label_encoder.anchor_generator
         self.bounding_box_format = bounding_box_format
         self.num_classes = num_classes
-        # TODO(ianstenbit): Make self.backbone = backbone work for PyTorch
-        # See https://stackoverflow.com/questions/61116433/maybe-i-found-something-strange-on-pytorch-which-result-in-property-setter-not  # noqa: E501
-        self._backbone = backbone
+        self.backbone = backbone
 
         self.feature_extractor = feature_extractor
         self._prediction_decoder = (
