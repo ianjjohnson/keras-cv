@@ -420,7 +420,9 @@ class RetinaNet(Task):
             self.num_classes,
             dtype="float32",
         )
-        cls_labels = ops.where(ops.any(classes > 0), cls_labels, 0)
+        cls_labels = ops.where(
+            ops.expand_dims(classes >= 0, axis=-1), cls_labels, 0
+        )
 
         positive_mask = ops.cast(ops.greater(classes, -1.0), dtype="float32")
         normalizer = ops.sum(positive_mask)
