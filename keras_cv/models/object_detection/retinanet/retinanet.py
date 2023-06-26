@@ -386,7 +386,7 @@ class RetinaNet(Task):
         self._user_metrics = metrics
         super().compile(loss=losses, **kwargs)
 
-    def compute_loss(self, x, y, y_pred, sample_weight):
+    def compute_loss(self, x, y, y_pred, sample_weight, **kwargs):
         box_pred = y_pred["box"]
         cls_pred = y_pred["classification"]
         boxes = y["box"]
