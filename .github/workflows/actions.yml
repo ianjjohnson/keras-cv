@@ -45,7 +45,11 @@ jobs:
       run: |
         pytest keras_cv/ --ignore keras_cv/models/legacy/ --durations 0
   multibackend:
-    name: Test the code with Keras Core + Jax
+    name: Test the code with Keras Core
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [tensorflow, jax, torch]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -72,14 +76,15 @@ jobs:
         pip install keras-core/
         pip install -e ".[tests]" --progress-bar off --upgrade
         pip install "jax[cpu]"
+        pip install torch>=2.0.1+cpu
+        pip install torchvision>=0.15.1
     - name: Test with pytest
       env:
         TEST_CUSTOM_OPS: false # TODO(ianstenbit): test custom ops, or figure out what our story is here
         KERAS_CV_MULTI_BACKEND: true
-        KERAS_BACKEND: jax
+        KERAS_BACKEND: ${{ matrix.backend }}
       run: |
         pytest keras_cv/bounding_box \
-               keras_cv/callbacks \
                keras_cv/layers/object_detection \
                keras_cv/layers/preprocessing \
                keras_cv/losses \

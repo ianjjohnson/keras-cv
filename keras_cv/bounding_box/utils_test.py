@@ -39,8 +39,8 @@ class BoundingBoxUtilTest(tf.test.TestCase):
             x2,
             y2,
         ) = ops.split(boxes, 4, axis=1)
-        self.assertAllLessEqual([x1, x2], width)
-        self.assertAllLessEqual([y1, y2], height)
+        self.assertAllLessEqual(ops.concatenate([x1, x2], axis=1), width)
+        self.assertAllLessEqual(ops.concatenate([y1, y2], axis=1), height)
         # Test relative format batched
         image = ops.ones(shape=(1, height, width, 3))
 

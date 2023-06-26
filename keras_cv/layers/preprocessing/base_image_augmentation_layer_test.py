@@ -126,7 +126,7 @@ class BaseImageAugmentationLayerTest(tf.test.TestCase):
     def test_augment_leaves_extra_dict_entries_unmodified(self):
         add_layer = RandomAddLayer(fixed_value=0.5)
         images = np.random.random(size=(8, 8, 3)).astype("float32")
-        image_timestamp = tf.constant(123123123)
+        image_timestamp = np.array(123123123)
         inputs = {"images": images, "image_timestamp": image_timestamp}
         _ = add_layer(inputs)
 

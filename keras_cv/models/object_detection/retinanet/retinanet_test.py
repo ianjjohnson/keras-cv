@@ -121,7 +121,7 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
         retina_net = keras_cv.models.RetinaNet(
             num_classes=2,
             bounding_box_format="xywh",
-            backbone=keras_cv.models.ResNet18V2Backbone(),
+            backbone=keras_cv.models.CSPDarkNetTinyBackbone(),
         )
 
         retina_net.compile(
@@ -151,7 +151,7 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
         retinanet = keras_cv.models.RetinaNet(
             num_classes=2,
             bounding_box_format=bounding_box_format,
-            backbone=keras_cv.models.ResNet18V2Backbone(),
+            backbone=keras_cv.models.CSPDarkNetTinyBackbone(),
         )
 
         retinanet.compile(
@@ -163,17 +163,19 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
                 l1_cutoff=1.0, reduction="sum"
             ),
         )
-        xs, ys = _create_bounding_box_dataset(bounding_box_format)
+        ds = _create_bounding_box_dataset(
+            bounding_box_format, use_dictionary_box_format=True
+        )
 
         # call once
-        _ = retinanet(xs)
+        _ = retinanet(ops.ones((1, 512, 512, 3)))
         original_fpn_weights = retinanet.feature_pyramid.get_weights()
         original_box_head_weights = retinanet.box_head.get_weights()
         original_classification_head_weights = (
             retinanet.classification_head.get_weights()
         )
 
-        retinanet.fit(x=xs, y=ys, epochs=1)
+        retinanet.fit(ds, epochs=1)
         fpn_after_fit = retinanet.feature_pyramid.get_weights()
         box_head_after_fit_weights = retinanet.box_head.get_weights()
         classification_head_after_fit_weights = (
@@ -199,7 +201,7 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
         model = keras_cv.models.RetinaNet(
             num_classes=20,
             bounding_box_format="xywh",
-            backbone=keras_cv.models.ResNet18V2Backbone(),
+            backbone=keras_cv.models.CSPDarkNetTinyBackbone(),
         )
         input_batch = ops.ones(shape=(2, 224, 224, 3))
         model_output = model(input_batch)
@@ -212,7 +214,10 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
 
         # Check that output matches.
         restored_output = restored_model(input_batch)
-        self.assertAllClose(model_output, restored_output)
+        self.assertAllClose(
+            ops.convert_to_numpy(model_output),
+            ops.convert_to_numpy(restored_output),
+        )
 
     def test_call_with_custom_label_encoder(self):
         anchor_generator = keras_cv.models.RetinaNet.default_anchor_generator(
@@ -257,7 +262,11 @@ class RetinaNetSmokeTest(tf.test.TestCase, parameterized.TestCase):
         expected_box = ops.array(
             [-1.2427993, 0.05179548, -1.9953268, 0.32456252]
         )
-        self.assertAllClose(output["box"][0, 123, :], expected_box, atol=1e-5)
+        self.assertAllClose(
+            ops.convert_to_numpy(output["box"][0, 123, :]),
+            expected_box,
+            atol=1e-5,
+        )
 
         expected_class = ops.array(
             [
@@ -285,5 +294,7 @@ class RetinaNetSmokeTest(tf.test.TestCase, parameterized.TestCase):
         )
         expected_class = ops.reshape(expected_class, (20,))
         self.assertAllClose(
-            output["classification"][0, 123], expected_class, atol=1e-5
+            ops.convert_to_numpy(output["classification"][0, 123]),
+            expected_class,
+            atol=1e-5,
         )
