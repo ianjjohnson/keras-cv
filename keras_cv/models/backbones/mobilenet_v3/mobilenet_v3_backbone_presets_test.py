@@ -19,6 +19,7 @@ import pytest
 import tensorflow as tf
 from absl.testing import parameterized
 
+from keras_cv.backend import ops
 from keras_cv.models.backbones.mobilenet_v3.mobilenet_v3_backbone import (
     MobileNetV3Backbone,
 )
@@ -47,7 +48,9 @@ class MobileNetV3PresetSmokeTest(tf.test.TestCase):
         outputs = outputs[0, 0, 0, :5]
         expected = [0.27, 0.01, 0.29, 0.08, -0.12]
         # Keep a high tolerance, so we are robust to different hardware.
-        self.assertAllClose(outputs, expected, atol=0.01, rtol=0.01)
+        self.assertAllClose(
+            ops.convert_to_numpy(outputs), expected, atol=0.01, rtol=0.01
+        )
 
 
 @pytest.mark.extra_large

@@ -151,7 +151,7 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
         }
         ds = tf.data.Dataset.from_tensor_slices((xs, ys))
         ds = ds.repeat(2)
-        ds = ds.batch(2)
+        ds = ds.batch(2, drop_remainder=True)
         retina_net.fit(ds, epochs=1)
 
         weights = retina_net.get_weights()
@@ -228,8 +228,8 @@ class RetinaNetTest(tf.test.TestCase, parameterized.TestCase):
         # Check that output matches.
         restored_output = restored_model(input_batch)
         self.assertAllClose(
-            ops.convert_to_numpy(model_output),
-            ops.convert_to_numpy(restored_output),
+            tf.nest.map_structure(ops.convert_to_numpy, model_output),
+            tf.nest.map_structure(ops.convert_to_numpy, restored_output),
         )
 
     def test_call_with_custom_label_encoder(self):

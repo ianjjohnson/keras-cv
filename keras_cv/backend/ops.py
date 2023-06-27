@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from keras_cv.backend import keras
 from keras_cv.backend.config import multi_backend
 
-if multi_backend() and keras.backend.config.backend() != "tensorflow":
+if multi_backend():
     from keras_core.backend import convert_to_numpy  # noqa: F403, F401
     from keras_core.backend import vectorized_map  # noqa: F403, F401
     from keras_core.operations import *  # noqa: F403, F401

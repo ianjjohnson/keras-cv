@@ -188,7 +188,9 @@ class RetinaNet(Task):
         )
 
         # Begin construction of forward pass
-        images = keras.layers.Input(feature_extractor.input_shape[1:])
+        images = keras.layers.Input(
+            feature_extractor.input_shape[1:], name="images"
+        )
 
         backbone_outputs = feature_extractor(images)
         features = feature_pyramid(backbone_outputs)
@@ -210,7 +212,7 @@ class RetinaNet(Task):
         # box_pred is always in "center_yxhw" delta-encoded no matter what
         # format you pass in.
 
-        inputs = images
+        inputs = {"images": images}
         outputs = {"box": box_pred, "classification": cls_pred}
 
         super().__init__(
@@ -388,7 +390,7 @@ class RetinaNet(Task):
         self._user_metrics = metrics
         super().compile(loss=losses, **kwargs)
 
-    def compute_loss(self, x, y, y_pred, sample_weight):
+    def compute_loss(self, x, y, y_pred, sample_weight, **kwargs):
         box_pred = y_pred["box"]
         cls_pred = y_pred["classification"]
         boxes = y["box"]
@@ -422,7 +424,9 @@ class RetinaNet(Task):
             self.num_classes,
             dtype="float32",
         )
-        cls_labels = ops.where(ops.any(classes > 0), cls_labels, 0)
+        cls_labels = ops.where(
+            ops.expand_dims(classes >= 0, axis=-1), cls_labels, 0
+        )
 
         positive_mask = ops.cast(ops.greater(classes, -1.0), dtype="float32")
         normalizer = ops.sum(positive_mask)

@@ -29,7 +29,7 @@ class PyCOCOCallbackTest(tf.test.TestCase):
         model = keras_cv.models.RetinaNet(
             num_classes=10,
             bounding_box_format="xywh",
-            backbone=keras_cv.models.ResNet50V2Backbone(),
+            backbone=keras_cv.models.CSPDarkNetTinyBackbone(),
         )
         # all metric formats must match
         model.compile(
