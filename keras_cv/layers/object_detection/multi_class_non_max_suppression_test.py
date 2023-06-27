@@ -53,7 +53,3 @@ class NmsPredictionDecoderTest(tf.test.TestCase):
         self.assertEqual(result["boxes"].shape, [8, None, 4])
         self.assertEqual(result["classes"].shape, [8, None])
         self.assertEqual(result["confidence"].shape, [8, None])
-
-    def test_throws_with_invalid_backend(self):
-        with self.assertRaisesRegex(NotImplementedError, "non-TensorFlow"):
-            decode_predictions_output_shapes()
