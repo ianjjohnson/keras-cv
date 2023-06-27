@@ -84,12 +84,13 @@ jobs:
         KERAS_CV_MULTI_BACKEND: true
         KERAS_BACKEND: ${{ matrix.backend }}
       run: |
-        pytest keras_cv/bounding_box \
+        pytest --run_large keras_cv/bounding_box \
+               keras_cv/callbacks/pycoco_callback_test.py \
                keras_cv/layers/object_detection \
                keras_cv/layers/preprocessing \
                keras_cv/losses \
                keras_cv/models/backbones \
-               keras_cv/models/classification/image_classifier_test.py \
+               keras_cv/models/classification \
                keras_cv/models/object_detection/retinanet \
                --durations 0
   format:

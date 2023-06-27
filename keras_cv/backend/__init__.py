@@ -69,4 +69,4 @@ from keras_cv.backend import tf_ops  # noqa: E402
 
 
 def supports_ragged():
-    return not multi_backend() or keras.backend.config.backend() == "tensorflow"
+    return not multi_backend()
