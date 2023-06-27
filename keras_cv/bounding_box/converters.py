@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from keras_cv.backend import keras
 from keras_cv.backend import ops
+from keras_cv.backend.scope import tf_data
 
 
 # Internal exception to propagate the fact images was not passed to a converter
@@ -297,6 +298,7 @@ FROM_XYXY_CONVERTERS = {
 }
 
 
+@tf_data
 def convert_format(
     boxes, source, target, images=None, image_shape=None, dtype="float32"
 ):

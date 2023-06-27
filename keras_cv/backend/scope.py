@@ -12,13 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
+import functools
 
 from keras_cv import backend
+from keras_cv.backend import keras
 from keras_cv.backend import ops
 from keras_cv.backend import tf_ops
+from keras_cv.backend.config import multi_backend
 
 _ORIGINAL_OPS = copy.copy(backend.ops.__dict__)
 _ORIGINAL_SUPPORTS_RAGGED = backend.supports_ragged
+
+
+def tf_data(function):
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+        if multi_backend() and keras.utils.backend_utils.in_tf_graph():
+            with TFDataScope():
+                return function(*args, **kwargs)
+        else:
+            return function(*args, **kwargs)
+
+    return wrapper
 
 
 class TFDataScope:
