@@ -49,13 +49,7 @@ class FeaturePyramid(keras.layers.Layer):
         p5_output = self.conv_c5_3x3(p5_output, training=training)
         p6_output = self.conv_c6_3x3(c5_output, training=training)
         p7_output = self.conv_c7_3x3(ops.relu(p6_output), training=training)
-        return {
-            "P3": p3_output,
-            "P4": p4_output,
-            "P5": p5_output,
-            "P6": p6_output,
-            "P7": p7_output,
-        }
+        return p3_output, p4_output, p5_output, p6_output, p7_output
 
     def build(self, input_shape):
         p3_channels = input_shape["P3"][-1]
@@ -75,10 +69,10 @@ class FeaturePyramid(keras.layers.Layer):
         p3_shape = input_shape["P3"][:-1]
         p4_shape = input_shape["P4"][:-1]
         p5_shape = input_shape["P5"][:-1]
-        return {
-            "P3": p3_shape + (256,),
-            "P4": p4_shape + (256,),
-            "P5": p5_shape + (256,),
-            "P6": p5_shape + (256,),
-            "P7": p5_shape + (256,),
-        }
+        return (
+            (p3_shape + (256,)),
+            (p4_shape + (256,)),
+            (p5_shape + (256,)),
+            (p5_shape + (256,)),
+            (p5_shape + (256,)),
+        )
