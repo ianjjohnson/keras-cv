@@ -18,7 +18,6 @@ import keras_cv
 from keras_cv import bounding_box
 from keras_cv.backend import keras
 from keras_cv.backend import ops
-from keras_cv.backend.config import multi_backend
 from keras_cv.losses.ciou_loss import CIoULoss
 from keras_cv.models.backbones.backbone_presets import backbone_presets
 from keras_cv.models.backbones.backbone_presets import (
@@ -444,13 +443,6 @@ class YOLOV8Detector(Task):
             num_classes=num_classes
         )
 
-        if multi_backend() and keras.backend.config.backend() == "jax":
-            self.train_step = self._jax_train_step
-            self.predict_step = self._jax_predict_step
-        else:
-            self.train_step = self._tf_train_step
-            self.predict_step = self._tf_predict_step
-
     def compile(
         self,
         box_loss,
@@ -520,19 +512,19 @@ class YOLOV8Detector(Task):
 
         super().compile(loss=losses, **kwargs)
 
-    def _tf_train_step(self, data):
+    def train_step(self, *args):
+        data = args[-1]
+        args = args[:-1]
         x, y = unpack_input(data)
-        return super().train_step((x, y))
+        return super().train_step(*args, (x, y))
 
-    def _jax_train_step(self, state, data):
+    def test_step(self, *args):
+        data = args[-1]
+        args = args[:-1]
         x, y = unpack_input(data)
-        return super().train_step(state, (x, y))
+        return super().test_step(*args, (x, y))
 
-    def test_step(self, data):
-        x, y = unpack_input(data)
-        return super().test_step((x, y))
-
-    def compute_loss(self, x, y, y_pred, sample_weight=None):
+    def compute_loss(self, x, y, y_pred, sample_weight=None, **kwargs):
         box_pred, cls_pred = y_pred["boxes"], y_pred["classes"]
 
         pred_boxes = decode_regression_to_boxes(box_pred)
@@ -583,7 +575,7 @@ class YOLOV8Detector(Task):
         }
 
         return super().compute_loss(
-            x=x, y=y_true, y_pred=y_pred, sample_weight=sample_weights
+            x=x, y=y_true, y_pred=y_pred, sample_weight=sample_weights, **kwargs
         )
 
     def decode_predictions(
@@ -609,13 +601,12 @@ class YOLOV8Detector(Task):
 
         return self.prediction_decoder(box_preds, scores)
 
-    def _tf_predict_step(self, data):
-        outputs = super().predict_step(data)
-        return self.decode_predictions(outputs, data)
-
-    def _jax_predict_step(self, state, data):
-        outputs = super().predict_step(state, data)
-        return self.decode_predictions(outputs, data)
+    def predict_step(self, *args):
+        outputs = super().predict_step(*args)
+        if isinstance(outputs, tuple):
+            return self.decode_predictions(outputs[0], args[-1]), outputs[1]
+        else:
+            return self.decode_predictions(outputs, args[-1])
 
     @property
     def prediction_decoder(self):
