@@ -242,7 +242,10 @@ class RetinaNet(Task):
 
     def predict_step(self, *args):
         outputs = super().predict_step(*args)
-        return self.decode_predictions(outputs, args[-1])
+        if type(outputs) is tuple:
+            return self.decode_predictions(outputs[0], args[-1]), outputs[1]
+        else:
+            return self.decode_predictions(outputs, args[-1])
 
     @property
     def prediction_decoder(self):
