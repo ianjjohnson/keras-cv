@@ -21,12 +21,12 @@ from absl.testing import parameterized
 
 import keras_cv
 from keras_cv import bounding_box
-from keras_cv.models.backbones.test_backbone_presets import (
-    test_backbone_presets,
-)
 from keras_cv.backend import keras
 from keras_cv.backend import ops
 from keras_cv.backend.config import multi_backend
+from keras_cv.models.backbones.test_backbone_presets import (
+    test_backbone_presets,
+)
 from keras_cv.models.object_detection.__test_utils__ import (
     _create_bounding_box_dataset,
 )
