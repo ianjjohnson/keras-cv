@@ -205,6 +205,10 @@ class YOLOV8DetectorTest(tf.test.TestCase, parameterized.TestCase):
         # We predicted at least 1 box with confidence_threshold 0
         self.assertGreater(outputs["boxes"].shape[0], 0)
 
+        # TODO(tirthasheshpatel): Updating any model attribute doesn't work
+        # with Keras Core once the model is build.
+        if multi_backend():
+            pytest.xfail("Keras Core doesn't allow updating attributes.")
         yolo.prediction_decoder = keras_cv.layers.NonMaxSuppression(
             bounding_box_format="xywh",
             from_logits=False,
